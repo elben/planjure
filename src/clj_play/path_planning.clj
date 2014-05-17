@@ -238,9 +238,5 @@
           ;; Push new neighbors into stack.
           (recur (into stack improved-neighbors) updated-g-costs updated-previous)))))
 
-(defn path-from-previous
-  "Extract path from previous mapping"
-  [previous {:keys [start finish] :as setup}])
-  
 ;; arrows could be cool for planning http://www.alanwood.net/unicode/arrows.html
 
