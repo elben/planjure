@@ -1,4 +1,4 @@
-(ns clj-play.path-planning)
+(ns clj-play.plan)
 
 (def world
   [[1 1 1 1 1]
@@ -78,7 +78,7 @@
   "Plans a path in the world using specified algorithm."
   [algorithm world setup])
 
-(defn cost 
+(defn cost
   "Cost of traversing from a neighboring node to specified node in world.  In
   theory, the edges hold the cost. But in our current world, the nodes hold the
   cost. Means that the cost of moving from any of its neighboring node to
@@ -113,7 +113,7 @@
 
         ;; Can backtrack, so recur.
         :else (recur (conj path node) (conj seen node) (previous node))))))
-  
+
 
 ; dfs algorithm
 ; - each node, we note whether or not we've gone through this, storing the
@@ -142,7 +142,7 @@
 ; - if finish has un-initialized g-costs, or if we can't traverse back to start,
 ;   then the path of start to finish is infinitely high
 
-(defn neighbors 
+(defn neighbors
   "Return the neighbors of node. Only four directions. Don't include start node
   as neighbor, because we assume it's never better to back through the start
   node (that is, we assume consistency in costs)."
@@ -196,10 +196,10 @@
 
 (defn dfs
   "Depth-first search.
-  
+
   Instead of terminating right away after finish is found, this DFS
   implementation exhausts the search space to find the global maxima.
-  
+
   Returns optimal path from start to finish."
   [world {:keys [start finish] :as setup}]
   (loop [stack [start] ;; init stack with start node

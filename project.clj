@@ -1,8 +1,22 @@
 (defproject clj-play "0.1.0-SNAPSHOT"
-  :description "Playing in Clojure. Random data structures and algorithms."
+  :description "Path-planning for ClojureScript."
   :url "http://github.com/elben/clj-play"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[org.clojure/clojure "1.5.1"]]
-  :main clj-play.core
-  :profiles {:uberjar {:aot :all}})
+  :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/clojurescript "0.0-2202"]
+                 [org.clojure/core.async "0.1.303.0-886421-alpha"]
+                 [om "0.6.2"]]
+
+  :plugins [[lein-cljsbuild "1.0.3"]]
+
+  :source-paths ["src"]
+
+  :cljsbuild {
+   :builds [{:id "clj-play"
+             :source-paths ["src"]
+             :compiler {
+               :output-to "clj_play.js"
+               :output-dir "out"
+               :optimizations :none
+               :source-map true}}]})
