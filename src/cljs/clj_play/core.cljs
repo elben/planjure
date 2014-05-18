@@ -13,7 +13,7 @@
           [1 9 9 1 9]
           [1 1 1 1 9]]
          :setup {:start [4 0] :finish [0 1]}
-         :path []}))
+         :path [[4 0] [4 1]]}))
 
 (println "hello")
 
@@ -36,26 +36,44 @@
       (str "#" normalized-part normalized-part normalized-part))))
 
 
-(defn draw-tile [context row col color]
-  (let [y (* row 20)
-        x (* col 20)]
-    (set! (.-fillStyle context) color)
-    (.fillRect context x y 20 20)))
+(defn draw-rect-tile 
+  ([context row col color] (draw-rect-tile context row col color 20))
+  ([context row col color size]
+   (let [y (* row 20)
+         x (* col 20)]
+     (set! (.-fillStyle context) color)
+     (.fillRect context x y size size))))
 
-(defn draw-start-finish-node [canvas row col]
-  (let [context (.getContext canvas "2d")
-        color "#ff0000"]
-    (draw-tile context row col color)))
+(defn draw-circle
+  ([context row col color] (draw-circle context row col color 10))
+  ([context row col color size]
+   (let [y (+ (* row 20) 10)
+         x (+ (* col 20) 10)]
+     (set! (.-fillStyle context) color)
+     (.beginPath context)
+     (.arc context x y size 0 (* 2 Math/PI) false)
+     (.closePath context)
+     (set! (.-strokeStyle context) color)
+     (.stroke context))))
 
+(defn draw-start-finish-marker [context row col]
+  (let [color "#ff0000"]
+    (draw-rect-tile context row col color)))
 
-;; canvas - DOM canvas
+(defn draw-path-market [context row col])
+
+(defn draw-path [context path]
+  (doseq [node path]
+    (println node)
+    (draw-circle context (nth node 0) (nth node 1) "#00ff00")))
+
+;; context - Canvas context
 ;; row -
 ;; col
 ;; weight - 0 to 9
-(defn draw-node [canvas row col weight]
-  (let [context (.getContext canvas "2d")
-        color (weight-to-hex-color weight)]
-    (draw-tile context row col color)))
+(defn draw-tile [context row col weight]
+  (let [color (weight-to-hex-color weight)]
+    (draw-rect-tile context row col color)))
 
 (defn refresh-world [app-state owner dom-node-ref]
   (let [canvas (om/get-node owner dom-node-ref)
@@ -65,16 +83,16 @@
     ; draw world
     (dotimes [row (count world)]
       (dotimes [col (count (nth world row))]
-        (draw-node canvas row col (nth (nth world row) col))))
+        (draw-tile context row col (nth (nth world row) col))))
 
     ;draw start/finish
     (let [[start-row start-col] (get-in app-state [:setup :start])
           [finish-row finish-col] (get-in app-state [:setup :finish])]
-      (draw-start-finish-node canvas start-row start-col)
-      (draw-start-finish-node canvas finish-row finish-col))
+      (draw-start-finish-marker context start-row start-col)
+      (draw-start-finish-marker context finish-row finish-col))
 
     ; draw path (if exists)
-    ;; TODO
+    (draw-path context (:path app-state))
     ))
 
 
