@@ -1,9 +1,13 @@
 (ns clj-play.core
+  (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
+            [cljs.core.async :refer [put! chan <!]]
             [clj-play.plan :as plan]))
 
 (enable-console-print!)
+
+(def plan-chan (chan))
 
 (def app-state
   (atom {:world
@@ -13,7 +17,7 @@
           [1 9 9 1 9]
           [1 1 1 1 9]]
          :setup {:start [4 0] :finish [0 1]}
-         :path [[4 0] [4 1]]}))
+         :path []}))
 
 (println "hello")
 
@@ -98,13 +102,68 @@
 
 (defn world-canvas-component [app-state owner]
   (reify
+    ;; Lifecycles:
+    ;; http://facebook.github.io/react/docs/component-specs.html#lifecycle-methods
+
+    om/IWillMount
+    (will-mount [this]
+      (go (loop []
+        (let [trigger (<! plan-chan)]
+          (println trigger)
+          (println "path before")
+          (println (:path @app-state))
+          ;; Need to use @ here because of cursors. I don't understand, but get
+          ;; this error:  Cannot manipulate cursor outside of render phase, only
+          ;; om.core/transact!, om.core/update!, and cljs.core/deref operations
+          ;; allowed. Explained here:
+          ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#debugging-om-components
+          (om/update! app-state :path (plan/dfs (:world @app-state) (:setup @app-state)))
+          (println "path after")
+          (println (:path @app-state))
+          (recur)))))
+
     om/IDidMount
-    (did-mount [this] (refresh-world app-state owner "world-canvas-ref"))
+    (did-mount [this]
+      (refresh-world app-state owner "world-canvas-ref"))
+
+    ;; Invoked directly after rendering. What triggers a render? An update in
+    ;; the component's data. And since what we passed to this component was the
+    ;; global app-state, any changes there wil cause this component to render
+    ;; and update.
+    om/IDidUpdate
+    (did-update [a b c]
+      ;; a - this
+      ;; b - previous properties (old app-state)
+      ;; c - previous state (internal state data of component; not used in Om?)
+      (println "change!")
+      (println a)
+      (println b)
+      (println c)
+      (refresh-world app-state owner "world-canvas-ref"))
 
     om/IRender
     (render [this]
       (dom/canvas #js {:id "world-canvas" :width 200 :height 200 :className "world-canvas" :ref "world-canvas-ref"}))))
 
+(defn toolbar-component [app-state owner]
+  (reify
+    om/IInitState
+    (init-state [_] {:plan-chan plan-chan})
+
+    om/IDidMount
+    (did-mount [this] nil)
+
+    om/IRender
+    (render [this]
+      ;; This uses core.async to communicate between components (namely, on
+      ;; click, update the path state).
+      ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#intercomponent-communication
+      ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
+      ;; world canvas component listens to this global channel to plan new paths.
+      (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))))
 
 (om/root world-canvas-component app-state
          {:target (. js/document (getElementById "world"))})
+
+(om/root toolbar-component app-state
+         {:target (. js/document (getElementById "toolbar"))})
