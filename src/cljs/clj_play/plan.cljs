@@ -31,6 +31,17 @@
 ;; Assumes a path of start to finish
 (def path [[5 0] [5 1] [5 2] [5 3] [4 3] [3 3] [2 3] [1 3] [1 2] [1 1] [0 1]])
 
+(defn random-tile
+  "Randomly generate a tile with chance of it being cost of 1."
+  [chance]
+  (if (< (rand) chance)
+    1
+    (+ 1 (rand-int 5))))
+
+(defn random-world [rows cols]
+  (vec (repeatedly rows
+    (fn [] (vec (repeatedly cols #(random-tile 0.7)))))))
+
 (defn create-empty-ascii
   [world]
   (let [height (count world)

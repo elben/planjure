@@ -9,14 +9,14 @@
 
 (def plan-chan (chan))
 
+(def default-values
+  {:world-width 600
+   :world-height 600
+   :tile-size 20})
+
 (def app-state
-  (atom {:world
-         [[1 1 1 1 1]
-          [1 1 1 1 1]
-          [9 9 9 1 1]
-          [1 9 9 1 9]
-          [1 1 1 1 9]]
-         :setup {:start [4 0] :finish [0 1]}
+  (atom {:world (plan/random-world 10 10)
+         :setup {:start [0 0] :finish [9 9]}
          :path []}))
 
 (println "hello")
@@ -26,9 +26,6 @@
 ;(defn clear-world-canvas []
 ;  (set! (.-width world-canvas-elem) (.-width world-canvas-elem)))
 
-
-;; Each tile is 20x20
-;; World, for now, is 200 x 200 (10 tiles x 10 tiles)
 
 ; weight is 0 to 9
 (defn weight-to-hex-color [weight]
@@ -41,18 +38,18 @@
 
 
 (defn draw-rect-tile 
-  ([context row col color] (draw-rect-tile context row col color 20))
+  ([context row col color] (draw-rect-tile context row col color (:tile-size default-values)))
   ([context row col color size]
-   (let [y (* row 20)
-         x (* col 20)]
+   (let [y (* row (:tile-size default-values))
+         x (* col (:tile-size default-values))]
      (set! (.-fillStyle context) color)
      (.fillRect context x y size size))))
 
 (defn draw-circle
   ([context row col color] (draw-circle context row col color 10))
   ([context row col color size]
-   (let [y (+ (* row 20) 10)
-         x (+ (* col 20) 10)]
+   (let [y (+ (* row (:tile-size default-values)) 10)
+         x (+ (* col (:tile-size default-values)) 10)]
      (set! (.-fillStyle context) color)
      (.beginPath context)
      (.arc context x y size 0 (* 2 Math/PI) false)
@@ -143,7 +140,7 @@
 
     om/IRender
     (render [this]
-      (dom/canvas #js {:id "world-canvas" :width 200 :height 200 :className "world-canvas" :ref "world-canvas-ref"}))))
+      (dom/canvas #js {:id "world-canvas" :width (:world-width default-values) :height (:world-height default-values) :className "world-canvas" :ref "world-canvas-ref"}))))
 
 (defn toolbar-component [app-state owner]
   (reify

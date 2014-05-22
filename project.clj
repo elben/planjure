@@ -12,6 +12,8 @@
 
   :source-paths ["src/cljs"]
 
+  :main clj-play.plan
+
   :cljsbuild {
    :builds [{:id "clj-play"
              :source-paths ["src"]
