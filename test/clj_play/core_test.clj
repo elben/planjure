@@ -1,6 +1,6 @@
-(ns clj-play.core-test
+(ns planjure.core-test
   (:require [clojure.test :refer :all]
-            [clj-play.core :refer :all]))
+            [planjure.core :refer :all]))
 
 (deftest a-test
   (testing "FIXME, I fail."

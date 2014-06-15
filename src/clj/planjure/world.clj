@@ -1,4 +1,4 @@
-(ns clj-play.world)
+(ns planjure.world)
 
 ; (defprotocol World
 ;   (cost-at [world r c]

@@ -1,6 +1,6 @@
-(defproject clj-play "0.1.0-SNAPSHOT"
+(defproject planjure "0.1.0-SNAPSHOT"
   :description "Path-planning for ClojureScript."
-  :url "http://github.com/elben/clj-play"
+  :url "http://github.com/elben/planjure"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.6.0"]
@@ -12,13 +12,13 @@
 
   :source-paths ["src/cljs"]
 
-  :main clj-play.plan
+  :main planjure.plan
 
   :cljsbuild {
-   :builds [{:id "clj-play"
+   :builds [{:id "planjure"
              :source-paths ["src"]
              :compiler {
-               :output-to "clj_play.js"
+               :output-to "planjure.js"
                :output-dir "out"
                :optimizations :none
                :source-map true}}]})

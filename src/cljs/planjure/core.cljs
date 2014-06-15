@@ -1,9 +1,9 @@
-(ns clj-play.core
+(ns planjure.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <!]]
-            [clj-play.plan :as plan]))
+            [planjure.plan :as plan]))
 
 (enable-console-print!)
 
