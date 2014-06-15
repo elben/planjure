@@ -114,7 +114,7 @@
           ;; om.core/transact!, om.core/update!, and cljs.core/deref operations
           ;; allowed. Explained here:
           ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#debugging-om-components
-          (om/update! app-state :path (plan/dfs (:world @app-state) (:setup @app-state)))
+          (om/update! app-state :path (plan/dijkstra (:world @app-state) (:setup @app-state)))
           (println "path after")
           (println (:path @app-state))
           (recur)))))

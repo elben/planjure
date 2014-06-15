@@ -1,4 +1,5 @@
-(ns planjure.plan)
+(ns planjure.plan
+  (:require [tailrecursion.priority-map :refer [priority-map]]))
 
 (def world
   [[1 1 1 1 1]
@@ -210,7 +211,34 @@
   
   Returns optimal path from start to finish."
   [world {:keys [start finish] :as setup}]
-  )
+  (println "hello inside dijkstra")
+  (loop [pq (priority-map start 0)
+         g-costs {}
+         previous {}]
+    (cond
+      (empty? pq)
+        ;; Never found finish. Plan as best as we can.
+        (find-path previous setup)
+      (= (first (first pq)) finish)
+        ;; We're done.
+        ;;
+        ;; If we popped finish, that means that finish was pushed as a neighbor
+        ;; and thus we have 'previous' set up already.
+        (find-path previous setup)
+      :else
+        (let [node (first (first pq)) ;; Get highest priority node (throw away priority).
+              old-pq pq
+              pq (pop pq)
+              neighs (neighbors world node setup)
+              improved-neighbor-costs (nodes-with-improved-costs world g-costs node neighs)
+              improved-neighbors (keys improved-neighbor-costs)
+              updated-g-costs (merge g-costs improved-neighbor-costs)
+              updated-previous (merge previous
+                                      ;; Create map of neighbors to node
+                                      ;; %1 is map, %2 neighbor.
+                                      (reduce #(assoc %1 %2 node) {} improved-neighbors))]
+          ;; Push new neighbors into priority queue
+          (recur (into pq (vec improved-neighbor-costs)) updated-g-costs updated-previous)))))
 
 (defn dfs
   "Depth-first search.
