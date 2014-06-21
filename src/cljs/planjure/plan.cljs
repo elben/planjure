@@ -211,7 +211,6 @@
   
   Returns optimal path from start to finish."
   [world {:keys [start finish] :as setup}]
-  (println "hello inside dijkstra")
   (loop [pq (priority-map start 0)
          g-costs {}
          previous {}]

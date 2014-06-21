@@ -139,15 +139,17 @@
     om/IInitState
     (init-state [_]
       {:plan-chan plan-chan
-       :algo-selection-chan (chan)})
+       :configuration-chan (chan)})
 
     om/IWillMount
     (will-mount [_]
-      (let [algo-selection-chan (om/get-state owner :algo-selection-chan)]
+      (let [configuration-chan (om/get-state owner :configuration-chan)]
         (go
           (while true
-            (let [algo-selection (<! algo-selection-chan)]
-              (om/update! app-state :algo algo-selection))))))
+            (let [config-item (<! configuration-chan)]
+              (cond
+                (= :algorithm (:kind config-item))
+                   (om/update! app-state :algo (:value config-item))))))))
 
     om/IDidMount
     (did-mount [this] nil)
@@ -159,11 +161,11 @@
                          ; use name to convert keyword to string. Easier to deal
                          ; with strings in DOM, instead of keywords.
                          :value (name (:algo app-state))
-                         :onChange #(put! (om/get-state owner :algo-selection-chan)
+                         :onChange #(put! (om/get-state owner :configuration-chan)
                                       ; Grab event's event.target.value, which
                                       ; will be the selected option.
                                       ; See: http://facebook.github.io/react/docs/forms.html#why-select-value
-                                      (keyword (.. % -target -value)))}
+                                      {:kind :algorithm :value (keyword (.. % -target -value))})}
 
           ;; Value is the string version of the key name.
           ;; Display text is the name of the algorithm.
