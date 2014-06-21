@@ -9,6 +9,9 @@
 
 (def plan-chan (chan))
 
+(def algorithms {:dijkstra {:name "Dijkstra" :fn plan/dijkstra}
+                 :dfs      {:name "Depth-first" :fn plan/dfs}})
+
 (def default-values
   {:world-width 600
    :world-height 600
@@ -17,15 +20,8 @@
 (def app-state
   (atom {:world (plan/random-world 10 10)
          :setup {:start [0 0] :finish [9 9]}
-         :path []}))
-
-(println "hello")
-
-;(def world-canvas-elem (. js/document (getElementById "world-canvas")))
-
-;(defn clear-world-canvas []
-;  (set! (.-width world-canvas-elem) (.-width world-canvas-elem)))
-
+         :path []
+         :algo :dijkstra}))
 
 ; weight is 0 to 9
 (defn weight-to-hex-color [weight]
@@ -65,7 +61,6 @@
 
 (defn draw-path [context path]
   (doseq [node path]
-    (println node)
     (draw-circle context (nth node 0) (nth node 1) "#00ff00")))
 
 ;; context - Canvas context
@@ -104,20 +99,18 @@
 
     om/IWillMount
     (will-mount [this]
-      (go (loop []
-        (let [trigger (<! plan-chan)]
-          (println trigger)
-          (println "path before")
-          (println (:path @app-state))
+      (go (while true
+        (let [trigger (<! plan-chan)
+              algo-fn (do
+                        ((algorithms (:algo @app-state)) :fn))]
           ;; Need to use @ here because of cursors. I don't understand, but get
           ;; this error:  Cannot manipulate cursor outside of render phase, only
           ;; om.core/transact!, om.core/update!, and cljs.core/deref operations
           ;; allowed. Explained here:
           ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#debugging-om-components
-          (om/update! app-state :path (plan/dijkstra (:world @app-state) (:setup @app-state)))
-          (println "path after")
-          (println (:path @app-state))
-          (recur)))))
+          (om/update! app-state :path (algo-fn
+                                       (:world @app-state)
+                                       (:setup @app-state)))))))
 
     om/IDidMount
     (did-mount [this]
@@ -127,15 +120,14 @@
     ;; the component's data. And since what we passed to this component was the
     ;; global app-state, any changes there wil cause this component to render
     ;; and update.
+    ;;
+    ;; TODO: change this to only update if the :path, :world, :setup changes.
+    ;; E.g. no need to update if :algo changes
     om/IDidUpdate
     (did-update [a b c]
       ;; a - this
       ;; b - previous properties (old app-state)
       ;; c - previous state (internal state data of component; not used in Om?)
-      (println "change!")
-      (println a)
-      (println b)
-      (println c)
       (refresh-world app-state owner "world-canvas-ref"))
 
     om/IRender
@@ -145,19 +137,44 @@
 (defn toolbar-component [app-state owner]
   (reify
     om/IInitState
-    (init-state [_] {:plan-chan plan-chan})
+    (init-state [_]
+      {:plan-chan plan-chan
+       :algo-selection-chan (chan)})
+
+    om/IWillMount
+    (will-mount [_]
+      (let [algo-selection-chan (om/get-state owner :algo-selection-chan)]
+        (go
+          (while true
+            (let [algo-selection (<! algo-selection-chan)]
+              (om/update! app-state :algo algo-selection))))))
 
     om/IDidMount
     (did-mount [this] nil)
 
     om/IRender
     (render [this]
-      ;; This uses core.async to communicate between components (namely, on
-      ;; click, update the path state).
-      ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#intercomponent-communication
-      ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
-      ;; world canvas component listens to this global channel to plan new paths.
-      (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))))
+      (dom/div nil
+        (apply dom/select #js {:id "algorithm"
+                         ; use name to convert keyword to string. Easier to deal
+                         ; with strings in DOM, instead of keywords.
+                         :value (name (:algo app-state))
+                         :onChange #(put! (om/get-state owner :algo-selection-chan)
+                                      ; Grab event's event.target.value, which
+                                      ; will be the selected option.
+                                      ; See: http://facebook.github.io/react/docs/forms.html#why-select-value
+                                      (keyword (.. % -target -value)))}
+
+          ;; Value is the string version of the key name.
+          ;; Display text is the name of the algorithm.
+          (map #(dom/option #js {:value (name (first %))} (:name (last %))) algorithms))
+
+        ;; This uses core.async to communicate between components (namely, on
+        ;; click, update the path state).
+        ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#intercomponent-communication
+        ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
+        ;; world canvas component listens to this global channel to plan new paths.
+        (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path")))))
 
 (om/root world-canvas-component app-state
          {:target (. js/document (getElementById "world"))})
