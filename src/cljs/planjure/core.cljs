@@ -9,19 +9,27 @@
 
 (def plan-chan (chan))
 
-(def algorithms {:dijkstra {:name "Dijkstra" :fn plan/dijkstra}
-                 :dfs      {:name "Depth-first" :fn plan/dfs}})
+(defn time-f [f]
+  (fn [& args]
+    (let [start (js/Date.)
+          ret (apply f args)]
+      {:time (- (js/Date.) start)
+       :return ret})))
+
+(def algorithms {:dijkstra {:name "Dijkstra" :fn (time-f plan/dijkstra)}
+                 :dfs      {:name "Depth-first" :fn (time-f plan/dfs)}})
 
 (def default-values
-  {:world-width 600
-   :world-height 600
+  {:world-width 400
+   :world-height 400
    :tile-size 20})
 
 (def app-state
   (atom {:world (plan/random-world 10 10)
          :setup {:start [0 0] :finish [9 9]}
          :path []
-         :algo :dijkstra}))
+         :algo :dijkstra
+         :last-run-time 0}))
 
 ; weight is 0 to 9
 (defn weight-to-hex-color [weight]
@@ -97,21 +105,6 @@
     ;; Lifecycles:
     ;; http://facebook.github.io/react/docs/component-specs.html#lifecycle-methods
 
-    om/IWillMount
-    (will-mount [this]
-      (go (while true
-        (let [trigger (<! plan-chan)
-              algo-fn (do
-                        ((algorithms (:algo @app-state)) :fn))]
-          ;; Need to use @ here because of cursors. I don't understand, but get
-          ;; this error:  Cannot manipulate cursor outside of render phase, only
-          ;; om.core/transact!, om.core/update!, and cljs.core/deref operations
-          ;; allowed. Explained here:
-          ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#debugging-om-components
-          (om/update! app-state :path (algo-fn
-                                       (:world @app-state)
-                                       (:setup @app-state)))))))
-
     om/IDidMount
     (did-mount [this]
       (refresh-world app-state owner "world-canvas-ref"))
@@ -146,10 +139,21 @@
       (let [configuration-chan (om/get-state owner :configuration-chan)]
         (go
           (while true
-            (let [config-item (<! configuration-chan)]
-              (cond
-                (= :algorithm (:kind config-item))
-                   (om/update! app-state :algo (:value config-item))))))))
+            (let [[v ch] (alts! [plan-chan configuration-chan])]
+              (when (= ch plan-chan)
+                (let [algo-fn ((algorithms (:algo @app-state)) :fn)
+                      result (algo-fn (:world @app-state) (:setup @app-state))]
+                  ;; Need to use @ here because of cursors. I don't understand, but get
+                  ;; this error:  Cannot manipulate cursor outside of render phase, only
+                  ;; om.core/transact!, om.core/update!, and cljs.core/deref operations
+                  ;; allowed. Explained here:
+                  ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#debugging-om-components
+                  (om/update! app-state :last-run-time (result :time))
+                  (om/update! app-state :path (result :return))))
+              (when (= ch configuration-chan)
+                (cond
+                  (= :algorithm (:kind v))
+                  (om/update! app-state :algo (:value v)))))))))
 
     om/IDidMount
     (did-mount [this] nil)
@@ -178,8 +182,34 @@
         ;; world canvas component listens to this global channel to plan new paths.
         (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path")))))
 
+(defn status-component [app-state owner]
+  (reify
+    om/IInitState
+    (init-state [_]
+      {})
+
+    om/IWillMount
+    (will-mount [_] nil)
+
+    om/IDidMount
+    (did-mount [_] nil)
+
+    om/IRender
+    (render [_]
+      (dom/div
+        nil
+        (dom/h1 nil "Status")
+        (dom/div
+          #js {:className :running-time}
+          (dom/span nil "Running time: ")
+          (dom/span nil (str (/ (app-state :last-run-time) 1000) " seconds")))))))
+
+
 (om/root world-canvas-component app-state
          {:target (. js/document (getElementById "world"))})
 
 (om/root toolbar-component app-state
          {:target (. js/document (getElementById "toolbar"))})
+
+(om/root status-component app-state
+         {:target (. js/document (getElementById "status"))})
