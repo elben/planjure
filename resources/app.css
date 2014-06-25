@@ -1,0 +1,11 @@
+
+.item-selector {
+  background: red;
+  padding: 4px;
+  margin: 4px;
+  cursor: pointer;
+}
+
+.item-selector:hover {
+  background: blue;
+}

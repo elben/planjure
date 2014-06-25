@@ -16,20 +16,20 @@
       {:time (- (js/Date.) start)
        :return ret})))
 
+
 (def algorithms {:dijkstra {:name "Dijkstra" :fn (time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (time-f plan/dfs)}})
 
-(def default-values
-  {:world-width 400
-   :world-height 400
-   :tile-size 20})
-
 (def app-state
-  (atom {:world (plan/random-world 10 10)
-         :setup {:start [0 0] :finish [9 9]}
+  (atom {:world (plan/random-world 20 20)
+         :setup {:start [0 0] :finish [19 19]}
          :path []
          :algo :dijkstra
-         :last-run-time 0}))
+         :last-run-time 0
+         :world-size-config { :width-px 400 :height-px 400 :tile-size 20 }
+         :world-sizes { :small  { :text "Small"  :size 20  :tile-size 20 }
+                        :medium { :text "Medium" :size 40  :tile-size 10 }
+                        :large  { :text "Large"  :size 200 :tile-size 2 }}}))
 
 ; weight is 0 to 9
 (defn weight-to-hex-color [weight]
@@ -42,21 +42,22 @@
 
 
 (defn draw-rect-tile 
-  ([context row col color] (draw-rect-tile context row col color (:tile-size default-values)))
+  ([context row col color] (draw-rect-tile context row col color (get-in @app-state [:world-size-config :tile-size])))
   ([context row col color size]
-   (let [y (* row (:tile-size default-values))
-         x (* col (:tile-size default-values))]
+   (let [y (* row (get-in @app-state [:world-size-config :tile-size]))
+         x (* col (get-in @app-state [:world-size-config :tile-size]))]
      (set! (.-fillStyle context) color)
      (.fillRect context x y size size))))
 
 (defn draw-circle
-  ([context row col color] (draw-circle context row col color 10))
+  ([context row col color] (draw-circle context row col color (get-in @app-state [:world-size-config :tile-size]))A)
   ([context row col color size]
-   (let [y (+ (* row (:tile-size default-values)) 10)
-         x (+ (* col (:tile-size default-values)) 10)]
+   (let [radius (/ size 2)
+         y (+ (* row size) radius)
+         x (+ (* col size) radius)]
      (set! (.-fillStyle context) color)
      (.beginPath context)
-     (.arc context x y size 0 (* 2 Math/PI) false)
+     (.arc context x y radius 0 (* 2 Math/PI) false)
      (.closePath context)
      (set! (.-strokeStyle context) color)
      (.stroke context))))
@@ -84,6 +85,9 @@
         context (.getContext canvas "2d")
         world (:world app-state)
         setup (:setup app-state)]
+    ; clear canvas
+    (set! (.-width canvas) (.-width canvas))
+
     ; draw world
     (dotimes [row (count world)]
       (dotimes [col (count (nth world row))]
@@ -125,7 +129,26 @@
 
     om/IRender
     (render [this]
-      (dom/canvas #js {:id "world-canvas" :width (:world-width default-values) :height (:world-height default-values) :className "world-canvas" :ref "world-canvas-ref"}))))
+      (dom/canvas #js {:id "world-canvas" :width (get-in app-state [:world-size-config :height-px]) :height (get-in app-state [:world-size-config :width-px]) :className "world-canvas" :ref "world-canvas-ref"}))))
+
+(defn world-size-selector [app-state owner]
+  (reify
+    om/IInitState
+    (init-state [_]
+      {})
+
+    ;; Use IRenderState here because we need to pass in the configuration-chan.
+    om/IRenderState
+    (render-state [_ {:keys [configuration-chan]}]
+      (dom/span
+        #js {:className "world-size-selector item-selector"
+             ;; Need to @app-state here because cursors (in this case,
+             ;; app-state) are not guaranteed to be consistent outside of the
+             ;; React.js render cycles. Even though the cursor is used in the
+             ;; RenderState lexical scope, it is in a javascript callback, thus
+             ;; outside of the lifecycles.
+             :onClick #(put! configuration-chan {:kind :world-size-selector :value @app-state})}
+        (:text app-state)))))
 
 (defn toolbar-component [app-state owner]
   (reify
@@ -152,6 +175,12 @@
                   (om/update! app-state :path (result :return))))
               (when (= ch configuration-chan)
                 (cond
+                  (= :world-size-selector (:kind v))
+                  (let [world-size (get-in v [:value :size])
+                        tile-size (get-in v [:value :tile-size])]
+                    (om/update! app-state [:world-size-config :tile-size] tile-size)
+                    (om/update! app-state :world (plan/random-world world-size world-size)))
+
                   (= :algorithm (:kind v))
                   (om/update! app-state :algo (:value v)))))))))
 
@@ -160,27 +189,42 @@
 
     om/IRender
     (render [this]
-      (dom/div nil
-        (apply dom/select #js {:id "algorithm"
-                         ; use name to convert keyword to string. Easier to deal
-                         ; with strings in DOM, instead of keywords.
-                         :value (name (:algo app-state))
-                         :onChange #(put! (om/get-state owner :configuration-chan)
-                                      ; Grab event's event.target.value, which
-                                      ; will be the selected option.
-                                      ; See: http://facebook.github.io/react/docs/forms.html#why-select-value
-                                      {:kind :algorithm :value (keyword (.. % -target -value))})}
+      (dom/div
+        nil
+        (dom/div
+          nil
+          (om/build world-size-selector
+            (get-in app-state [:world-sizes :small])
+            {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})
+          (om/build world-size-selector
+            (get-in app-state [:world-sizes :medium])
+            {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})
+          (om/build world-size-selector
+            (get-in app-state [:world-sizes :large])
+            {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}}))
 
-          ;; Value is the string version of the key name.
-          ;; Display text is the name of the algorithm.
-          (map #(dom/option #js {:value (name (first %))} (:name (last %))) algorithms))
+        (dom/div
+          nil
+          (apply dom/select #js {:id "algorithm"
+                                 ; use name to convert keyword to string. Easier to deal
+                                 ; with strings in DOM, instead of keywords.
+                                 :value (name (:algo app-state))
+                                 :onChange #(put! (om/get-state owner :configuration-chan)
+                                                  ; Grab event's event.target.value, which
+                                                  ; will be the selected option.
+                                                  ; See: http://facebook.github.io/react/docs/forms.html#why-select-value
+                                                  {:kind :algorithm :value (keyword (.. % -target -value))})}
 
-        ;; This uses core.async to communicate between components (namely, on
-        ;; click, update the path state).
-        ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#intercomponent-communication
-        ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
-        ;; world canvas component listens to this global channel to plan new paths.
-        (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path")))))
+                 ;; Value is the string version of the key name.
+                 ;; Display text is the name of the algorithm.
+                 (map #(dom/option #js {:value (name (first %))} (:name (last %))) algorithms))
+
+          ;; This uses core.async to communicate between components (namely, on
+          ;; click, update the path state).
+          ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#intercomponent-communication
+          ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
+          ;; world canvas component listens to this global channel to plan new paths.
+          (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))))))
 
 (defn status-component [app-state owner]
   (reify
