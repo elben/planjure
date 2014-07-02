@@ -1,22 +1,26 @@
 <html>
-    <head>
-        <style>
-            ul li input {
-                width: 400px;
-            }
-            ul li button {
-                margin-left: 10px;
-            }
-        </style>
-        <link rel="stylesheet" href="resources/app.css">
-    </head>
-    <body>
-        <div id="world"></div>
-        <div id="toolbar"></div>
-        <div id="status"></div>
-        <script src="http://fb.me/react-0.9.0.js"></script>
-        <script src="out/goog/base.js" type="text/javascript"></script>
-        <script src="planjure.js" type="text/javascript"></script>
-        <script type="text/javascript">goog.require("planjure.core");</script>
-    </body>
+  <head>
+  <title>Planjure - Path-planning algorithms</title>
+    <style>
+      ul li input {
+          width: 400px;
+      }
+      ul li button {
+          margin-left: 10px;
+      }
+    </style>
+    <link rel="stylesheet" href="resources/app.css">
+  </head>
+  <body>
+    <div class="structure">
+      <div id="world"></div>
+      <div id="toolbar"></div>
+      <div class="clearfix"></div>
+      <div id="status"></div>
+    </div>
+    <script src="http://fb.me/react-0.9.0.js"></script>
+    <script src="out/goog/base.js" type="text/javascript"></script>
+    <script src="planjure.js" type="text/javascript"></script>
+    <script type="text/javascript">goog.require("planjure.core");</script>
+  </body>
 </html>

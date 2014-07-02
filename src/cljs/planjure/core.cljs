@@ -26,10 +26,12 @@
          :path []
          :algo :dijkstra
          :last-run-time 0
-         :world-size-config { :width-px 400 :height-px 400 :tile-size 20 }
-         :world-sizes { :small  { :text "Small"  :size 20  :tile-size 20 }
-                        :medium { :text "Medium" :size 40  :tile-size 10 }
-                        :large  { :text "Large"  :size 200 :tile-size 2 }}}))
+         :world-size-config {
+                             :width-px 400 :height-px 400
+                             :selected-size :small
+                             :options { :small  { :name :small :text "Small"  :size 20  :tile-size 20 }
+                                       :medium { :name :medium :text "Medium" :size 40  :tile-size 10 }
+                                       :large  { :name :large :text "Large"  :size 200 :tile-size 2 }}}}))
 
 ; weight is 0 to 9
 (defn weight-to-hex-color [weight]
@@ -40,17 +42,22 @@
           normalized-part (if (= (count part) 1) (str "0" part) part)] ;; turn "e" to "0e"
       (str "#" normalized-part normalized-part normalized-part))))
 
+(defn get-selected-tile-size
+  []
+  (let [tile-size-name (get-in @app-state [:world-size-config :selected-size])
+        value (get-in @app-state [:world-size-config :options tile-size-name :tile-size])]
+    value))
 
 (defn draw-rect-tile 
-  ([context row col color] (draw-rect-tile context row col color (get-in @app-state [:world-size-config :tile-size])))
+  ([context row col color] (draw-rect-tile context row col color (get-selected-tile-size)))
   ([context row col color size]
-   (let [y (* row (get-in @app-state [:world-size-config :tile-size]))
-         x (* col (get-in @app-state [:world-size-config :tile-size]))]
+   (let [y (* row (get-selected-tile-size))
+         x (* col (get-selected-tile-size))]
      (set! (.-fillStyle context) color)
      (.fillRect context x y size size))))
 
 (defn draw-circle
-  ([context row col color] (draw-circle context row col color (get-in @app-state [:world-size-config :tile-size]))A)
+  ([context row col color] (draw-circle context row col color (get-selected-tile-size)))
   ([context row col color size]
    (let [radius (/ size 2)
          y (+ (* row size) radius)
@@ -132,6 +139,8 @@
       (dom/canvas #js {:id "world-canvas" :width (get-in app-state [:world-size-config :height-px]) :height (get-in app-state [:world-size-config :width-px]) :className "world-canvas" :ref "world-canvas-ref"}))))
 
 (defn world-size-selector [app-state owner]
+  ;; Expected app-state is one of the :options map in the world-size-config,
+  ;; along with a :selected-size whose value is the currently selected size.
   (reify
     om/IInitState
     (init-state [_]
@@ -141,7 +150,8 @@
     om/IRenderState
     (render-state [_ {:keys [configuration-chan]}]
       (dom/span
-        #js {:className "world-size-selector item-selector"
+        #js {:className (let [selected-class (if (= (:selected-size app-state) (:name app-state)) "selected" "")]
+                          (str "world-size-selector item-selector " selected-class))
              ;; Need to @app-state here because cursors (in this case,
              ;; app-state) are not guaranteed to be consistent outside of the
              ;; React.js render cycles. Even though the cursor is used in the
@@ -177,8 +187,8 @@
                 (cond
                   (= :world-size-selector (:kind v))
                   (let [world-size (get-in v [:value :size])
-                        tile-size (get-in v [:value :tile-size])]
-                    (om/update! app-state [:world-size-config :tile-size] tile-size)
+                        selected-size (get-in v [:value :name])]
+                    (om/update! app-state [:world-size-config :selected-size] selected-size)
                     (om/update! app-state :world (plan/random-world world-size world-size)))
 
                   (= :algorithm (:kind v))
@@ -193,38 +203,50 @@
         nil
         (dom/div
           nil
-          (om/build world-size-selector
-            (get-in app-state [:world-sizes :small])
-            {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})
-          (om/build world-size-selector
-            (get-in app-state [:world-sizes :medium])
-            {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})
-          (om/build world-size-selector
-            (get-in app-state [:world-sizes :large])
-            {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}}))
+          (dom/div #js {:className "section-title"} "World Size")
+          (dom/div #js {:className "section-wrapper"}
+            (om/build world-size-selector
+              (assoc (get-in app-state [:world-size-config :options :small]) :selected-size (get-in app-state [:world-size-config :selected-size]))
+              {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})
+            (om/build world-size-selector
+              (assoc (get-in app-state [:world-size-config :options :medium]) :selected-size (get-in app-state [:world-size-config :selected-size]))
+              {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})
+            (om/build world-size-selector
+              (assoc (get-in app-state [:world-size-config :options :large]) :selected-size (get-in app-state [:world-size-config :selected-size]))
+              {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})))
 
         (dom/div
           nil
-          (apply dom/select #js {:id "algorithm"
-                                 ; use name to convert keyword to string. Easier to deal
-                                 ; with strings in DOM, instead of keywords.
-                                 :value (name (:algo app-state))
-                                 :onChange #(put! (om/get-state owner :configuration-chan)
-                                                  ; Grab event's event.target.value, which
-                                                  ; will be the selected option.
-                                                  ; See: http://facebook.github.io/react/docs/forms.html#why-select-value
-                                                  {:kind :algorithm :value (keyword (.. % -target -value))})}
+          (dom/div #js {:className "section-title"} "Algorithm")
+          (dom/div #js {:className "section-wrapper"}
+            (dom/div
+              nil
+              (apply dom/select #js {:id "algorithm"
+                                     ; use name to convert keyword to string. Easier to deal
+                                     ; with strings in DOM, instead of keywords.
+                                     :value (name (:algo app-state))
+                                     :onChange #(put! (om/get-state owner :configuration-chan)
+                                                      ; Grab event's event.target.value, which
+                                                      ; will be the selected option.
+                                                      ; See: http://facebook.github.io/react/docs/forms.html#why-select-value
+                                                      {:kind :algorithm :value (keyword (.. % -target -value))})}
 
-                 ;; Value is the string version of the key name.
-                 ;; Display text is the name of the algorithm.
-                 (map #(dom/option #js {:value (name (first %))} (:name (last %))) algorithms))
+                     ;; Value is the string version of the key name.
+                     ;; Display text is the name of the algorithm.
+                     (map #(dom/option #js {:value (name (first %))} (:name (last %))) algorithms))
 
-          ;; This uses core.async to communicate between components (namely, on
-          ;; click, update the path state).
-          ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#intercomponent-communication
-          ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
-          ;; world canvas component listens to this global channel to plan new paths.
-          (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))))))
+              ;; This uses core.async to communicate between components (namely, on
+              ;; click, update the path state).
+              ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#intercomponent-communication
+              ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
+              ;; world canvas component listens to this global channel to plan new paths.
+              (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))))
+        
+        (dom/div
+          nil
+          (dom/div #js {:className "section-title"} "Status")
+          (dom/div #js {:className "section-wrapper"}
+            (om/build status-component app-state)))))))
 
 (defn status-component [app-state owner]
   (reify
@@ -242,7 +264,7 @@
     (render [_]
       (dom/div
         nil
-        (dom/h1 nil "Status")
+        ; (dom/h2 nil "Status")
         (dom/div
           #js {:className :running-time}
           (dom/span nil "Running time: ")
@@ -255,5 +277,5 @@
 (om/root toolbar-component app-state
          {:target (. js/document (getElementById "toolbar"))})
 
-(om/root status-component app-state
-         {:target (. js/document (getElementById "status"))})
+; (om/root status-component app-state
+;          {:target (. js/document (getElementById "status"))})
