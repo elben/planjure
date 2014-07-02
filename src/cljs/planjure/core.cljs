@@ -138,7 +138,7 @@
     (render [this]
       (dom/canvas #js {:id "world-canvas" :width (get-in app-state [:world-size-config :height-px]) :height (get-in app-state [:world-size-config :width-px]) :className "world-canvas" :ref "world-canvas-ref"}))))
 
-(defn world-size-selector [app-state owner]
+(defn world-size-selector-component [app-state owner]
   ;; Expected app-state is one of the :options map in the world-size-config,
   ;; along with a :selected-size whose value is the currently selected size.
   (reify
@@ -150,7 +150,7 @@
     om/IRenderState
     (render-state [_ {:keys [configuration-chan]}]
       (dom/span
-        #js {:className (let [selected-class (if (= (:selected-size app-state) (:name app-state)) "selected" "")]
+        #js {:className (let [selected-class (if (:selected app-state) "selected")]
                           (str "world-size-selector item-selector " selected-class))
              ;; Need to @app-state here because cursors (in this case,
              ;; app-state) are not guaranteed to be consistent outside of the
@@ -159,6 +159,23 @@
              ;; outside of the lifecycles.
              :onClick #(put! configuration-chan {:kind :world-size-selector :value @app-state})}
         (:text app-state)))))
+
+(defn world-size-selector-main-component [app-state owner]
+  (reify
+    om/IInitState
+    (init-state [_] {})
+
+    om/IRenderState
+    (render-state [_ {:keys [configuration-chan]}]
+      (let [selected-size (get-in app-state [:world-size-config :selected-size])]
+        (apply dom/div nil
+               (map
+                 (fn
+                   [size-name]
+                   (om/build world-size-selector-component
+                             (assoc (get-in app-state [:world-size-config :options size-name]) :selected (= selected-size size-name))
+                             {:init-state {:configuration-chan configuration-chan}}))
+                 [:small :medium :large]))))))
 
 (defn toolbar-component [app-state owner]
   (reify
@@ -205,14 +222,8 @@
           nil
           (dom/div #js {:className "section-title"} "World Size")
           (dom/div #js {:className "section-wrapper"}
-            (om/build world-size-selector
-              (assoc (get-in app-state [:world-size-config :options :small]) :selected-size (get-in app-state [:world-size-config :selected-size]))
-              {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})
-            (om/build world-size-selector
-              (assoc (get-in app-state [:world-size-config :options :medium]) :selected-size (get-in app-state [:world-size-config :selected-size]))
-              {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})
-            (om/build world-size-selector
-              (assoc (get-in app-state [:world-size-config :options :large]) :selected-size (get-in app-state [:world-size-config :selected-size]))
+            (om/build world-size-selector-main-component
+              app-state
               {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})))
 
         (dom/div
