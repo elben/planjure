@@ -99,7 +99,7 @@
         nil
         (dom/div
           nil
-          (dom/div #js {:className "section-title"} "World Size")
+          (dom/div #js {:className "section-title"} "World")
           (dom/div #js {:className "section-wrapper"}
             (om/build world-size-selector-main-component
               app-state
