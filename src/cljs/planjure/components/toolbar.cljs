@@ -134,11 +134,11 @@
         
         (dom/div
           nil
-          (dom/div #js {:className "section-title"} "Status")
+          (dom/div #js {:className "section-title"} "Statistics")
           (dom/div #js {:className "section-wrapper"}
-            (om/build status-component app-state)))))))
+            (om/build statistics-component app-state)))))))
 
-(defn status-component [app-state owner]
+(defn statistics-component [app-state owner]
   (reify
     om/IInitState
     (init-state [_]
@@ -154,9 +154,7 @@
     (render [_]
       (dom/div
         nil
-        ; (dom/h2 nil "Status")
         (dom/div
           #js {:className :running-time}
-          (dom/span nil "Running time: ")
           (dom/span nil (str (/ (app-state :last-run-time) 1000) " seconds")))))))
 

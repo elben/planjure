@@ -7,13 +7,18 @@
             [planjure.appstate :as appstate]))
 
 ; weight is 0 to 9
-(defn weight-to-hex-color [weight]
-  "Convert a weight (0 to 9) to CSS hex color."
-  (if (<= weight 0)
-    "#ffffff"
-    (let [part (.toString (int (+ (/ 100 weight) 50)) 16)  ;; convert to base 16
-          normalized-part (if (= (count part) 1) (str "0" part) part)] ;; turn "e" to "0e"
-      (str "#" normalized-part normalized-part normalized-part))))
+; (defn weight-to-hex-color [weight]
+;   "Convert a weight (0 to 9) to CSS hex color."
+;   (if (<= weight 0)
+;     "#ffffff"
+;     (let [part (.toString (int (+ (/ 100 weight) 50)) 16)  ;; convert to base 16
+;           normalized-part (if (= (count part) 1) (str "0" part) part)] ;; turn "e" to "0e"
+;       (str "#" normalized-part normalized-part normalized-part))))
+
+(def color-mapping
+  ["#09738A", "#adc5ad" "#c6c294" "#7c9a53" "#578633"])
+
+(defn weight-to-hex-color [weight] (color-mapping (dec weight)))
 
 (defn get-selected-tile-size
   []
