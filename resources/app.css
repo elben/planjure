@@ -21,6 +21,10 @@ body {
   width: 400px;
 }
 
+#world canvas {
+  cursor: pointer;
+}
+
 #toolbar {
   float: left;
   width: 200px;
@@ -64,3 +68,4 @@ body {
 .item-selector:hover, .item-selector.selected {
   border: 3px solid #09738A;
 }
+

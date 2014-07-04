@@ -19,12 +19,11 @@
 ;       (str "#" normalized-part normalized-part normalized-part))))
 
 (def color-mapping
-  ["#09738A", "#adc5ad" "#c6c294" "#7c9a53" "#578633"])
+  ["#09738A", "#adc5ad" "#c6c294" "#7c9a53" "#578633" "#3b621a" "#2d5010" "#26470b"])
 
 (defn weight-to-hex-color [weight] (color-mapping (dec weight)))
 
-(defn get-selected-tile-size
-  []
+(defn get-selected-tile-size []
   (let [tile-size-name (get-in @appstate/app-state [:world-size-config :selected-size])
         value (get-in @appstate/app-state [:world-size-config :options tile-size-name :tile-size])]
     value))
@@ -90,6 +89,40 @@
     ; draw path (if exists)
     (draw-path context (:path app-state))))
 
+(defn mouse-pos-at
+  [canvas e]
+  "Returns relative x, y position of canvas, given goog mouse event."
+  {:x (.-offsetX e) :y (.-offsetY e)})
+
+(defn tile-pos-at
+  [canvas e]
+  ;; TODO need to close tile-size elsewhere for perf?
+  (let [{:keys [x y]} (mouse-pos-at canvas e)
+        tile-size (get-selected-tile-size)]
+    {:x (max 0 (int (/ x tile-size))) :y (max 0 (int (/ y tile-size)))}))
+
+(defn update-world!
+  [app-state x y incr]
+  "Increase cost at x, y position in the world passed in via the app-state
+  cursor."
+  (let [world (:world @appstate/app-state)
+        row (world y)
+        cost (row x)
+        new-cost (max 1 (min (+ incr cost) 8))
+        new-row (assoc row x new-cost)
+        new-world (assoc world y new-row)]
+    (om/update! app-state :world new-world)))
+
+(defn erase-at
+  [app-state tile-pos]
+  (let [{:keys [x y]} tile-pos]
+    (update-world! app-state x y -1)))
+
+(defn paint-at
+  [app-state tile-pos]
+  (let [{:keys [x y]} tile-pos]
+    (update-world! app-state x y 1)))
+
 (defn world-canvas-component [app-state owner]
   (reify
     ; Lifecycles:
@@ -99,25 +132,27 @@
     (init-state [_]
       {:mouse-chan mouse-chan})
 
-    om/IWillMount
-    (will-mount [_]
-      (let [mouse-chan (om/get-state owner :mouse-chan)]
-        (go
-          (while true
-            (let [mouseevent (<! mouse-chan)]
-              (case mouseevent
-                :mousedown (println "down!")
-                :mouseup (println "up!")
-                :mousemove (println "move!")))))))
-
     om/IDidMount
     (did-mount [this]
       (refresh-world app-state owner "world-canvas-ref")
       (let [world-canvas (om/get-node owner "world-canvas-ref")]
         ; (.addEventListener world-canvas "mousedown" #(println "down!") false)))
-        (events/listen world-canvas "mousedown" #(put! mouse-chan :mousedown))
-        (events/listen world-canvas "mouseup" #(put! mouse-chan :mouseup))
-        (events/listen world-canvas "mousemove" #(put! mouse-chan :mousemove))))
+        (events/listen world-canvas "mousedown" #(put! mouse-chan {:event % :mouseevent :mousedown}))
+        (events/listen world-canvas "mouseup" #(put! mouse-chan {:event % :mouseevent :mouseup}))
+        (events/listen world-canvas "mousemove" #(put! mouse-chan {:event % :mouseevent :mousemove})))
+      (let [canvas (om/get-node owner "world-canvas-ref")
+            mouse-chan (om/get-state owner :mouse-chan)]
+        (go
+          (while true
+            (let [mouseevent (<! mouse-chan)]
+              (case (:mouseevent mouseevent)
+                :mousedown (om/update! app-state :mouse-drawing true)
+                :mouseup (om/update! app-state :mouse-drawing false)
+                :mousemove (when (:mouse-drawing @app-state)
+                             (let [tile-pos (tile-pos-at canvas (:event mouseevent))]
+                               (case (:selected-tool @app-state)
+                                 :eraser (erase-at app-state tile-pos)
+                                 :brush (paint-at app-state tile-pos))))))))))
 
     ; Invoked directly after rendering. What triggers a render? An update in
     ; the component's data. And since what we passed to this component was the
