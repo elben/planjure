@@ -3,7 +3,8 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <!]]
-            [planjure.plan :as plan]))
+            [planjure.plan :as plan]
+            [planjure.components.editor :as editor]))
 
 (def plan-chan (chan))
 
@@ -17,7 +18,7 @@
 (def algorithms {:dijkstra {:name "Dijkstra" :fn (time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (time-f plan/dfs)}})
 
-(defn world-size-selector-component [app-state owner]
+(defn size-selector-component [app-state owner]
   ;; Expected app-state is one of the :options map in the world-size-config,
   ;; along with a :selected-size whose value is the currently selected size.
   (reify
@@ -39,7 +40,7 @@
              :onClick #(put! configuration-chan {:kind :world-size-selector :value @app-state})}
         (:text app-state)))))
 
-(defn world-size-selector-main-component [app-state owner]
+(defn size-component [app-state owner]
   (reify
     om/IInitState
     (init-state [_] {})
@@ -51,7 +52,7 @@
                (map
                  (fn
                    [size-name]
-                   (om/build world-size-selector-component
+                   (om/build size-selector-component
                              (assoc (get-in app-state [:world-size-config :options size-name]) :selected (= selected-size size-name))
                              {:init-state {:configuration-chan configuration-chan}}))
                  [:small :medium :large]))))))
@@ -69,6 +70,7 @@
         (go
           (while true
             (let [[v ch] (alts! [plan-chan configuration-chan])]
+              (println v)
               (when (= ch plan-chan)
                 (let [algo-fn ((algorithms (:algo @app-state)) :fn)
                       result (algo-fn (:world @app-state) (:setup @app-state))]
@@ -88,7 +90,10 @@
                     (om/update! app-state :world (plan/random-world world-size world-size)))
 
                   (= :algorithm (:kind v))
-                  (om/update! app-state :algo (:value v)))))))))
+                  (om/update! app-state :algo (:value v))
+
+                  (= :tool-selector (:kind v))
+                  (om/update! app-state :selected-tool (:value v)))))))))
 
     om/IDidMount
     (did-mount [this] nil)
@@ -101,7 +106,15 @@
           nil
           (dom/div #js {:className "section-title"} "World")
           (dom/div #js {:className "section-wrapper"}
-            (om/build world-size-selector-main-component
+            (om/build size-component
+              app-state
+              {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})))
+
+        (dom/div
+          nil
+          (dom/div #js {:className "section-title"} "Editor")
+          (dom/div #js {:className "section-wrapper"}
+            (om/build editor/editor-component
               app-state
               {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})))
 
@@ -156,5 +169,6 @@
         nil
         (dom/div
           #js {:className :running-time}
-          (dom/span nil (str (/ (app-state :last-run-time) 1000) " seconds")))))))
+          (dom/div nil (str (/ (app-state :last-run-time) 1000) " seconds"))
+          (dom/div nil (name (app-state :selected-tool))))))))
 
