@@ -23,9 +23,9 @@
       {})
 
     om/IRenderState
-    (render-state [_ {:keys [configuration-chan tool-name tool-text]}]
-      (dom/span
-        #js {:className "item-selector"
-             :onClick #(do (println tool-name)
-                           (put! configuration-chan {:kind :tool-selector :value tool-name}))}
-        tool-text))))
+    (render-state [_ {:keys [configuration-chan tool-name tool-text selected]}]
+      (let [css-class (if (= tool-name (:selected-tool app-state)) "selected" "")]
+        (dom/span
+          #js {:className (str "item-selector " css-class)
+               :onClick #(put! configuration-chan {:kind :tool-selector :value tool-name})}
+          tool-text)))))
