@@ -19,4 +19,6 @@
               }
            }
          :selected-tool :brush
+         :mouse-drawing false
+         :mouse-pos [0 0]
         }))

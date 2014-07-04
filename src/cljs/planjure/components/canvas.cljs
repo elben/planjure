@@ -2,9 +2,12 @@
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
+            [goog.events :as events]
             [cljs.core.async :refer [put! chan <!]]
             [planjure.plan :as plan]
             [planjure.appstate :as appstate]))
+
+(def mouse-chan (chan))
 
 ; weight is 0 to 9
 ; (defn weight-to-hex-color [weight]
@@ -87,15 +90,34 @@
     ; draw path (if exists)
     (draw-path context (:path app-state))))
 
-
 (defn world-canvas-component [app-state owner]
   (reify
     ; Lifecycles:
     ; http://facebook.github.io/react/docs/component-specs.html#lifecycle-methods
 
+    om/IInitState
+    (init-state [_]
+      {:mouse-chan mouse-chan})
+
+    om/IWillMount
+    (will-mount [_]
+      (let [mouse-chan (om/get-state owner :mouse-chan)]
+        (go
+          (while true
+            (let [mouseevent (<! mouse-chan)]
+              (case mouseevent
+                :mousedown (println "down!")
+                :mouseup (println "up!")
+                :mousemove (println "move!")))))))
+
     om/IDidMount
     (did-mount [this]
-      (refresh-world app-state owner "world-canvas-ref"))
+      (refresh-world app-state owner "world-canvas-ref")
+      (let [world-canvas (om/get-node owner "world-canvas-ref")]
+        ; (.addEventListener world-canvas "mousedown" #(println "down!") false)))
+        (events/listen world-canvas "mousedown" #(put! mouse-chan :mousedown))
+        (events/listen world-canvas "mouseup" #(put! mouse-chan :mouseup))
+        (events/listen world-canvas "mousemove" #(put! mouse-chan :mousemove))))
 
     ; Invoked directly after rendering. What triggers a render? An update in
     ; the component's data. And since what we passed to this component was the
