@@ -18,7 +18,8 @@
                :large  { :name :large :text "Large"  :size 200 :tile-size 2 }
               }
            }
-         :selected-tool :brush
+         :brush :brush
+         :brush-size :size1
          :mouse-drawing false
          :mouse-pos [0 0]
         }))

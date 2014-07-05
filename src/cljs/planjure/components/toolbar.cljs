@@ -93,7 +93,7 @@
                   (om/update! app-state :algo (:value v))
 
                   (= :tool-selector (:kind v))
-                  (om/update! app-state :selected-tool (:value v)))))))))
+                  (om/update! app-state (:tool-kind v) (:value v)))))))))
 
     om/IDidMount
     (did-mount [this] nil)
@@ -170,5 +170,5 @@
         (dom/div
           #js {:className :running-time}
           (dom/div nil (str (/ (app-state :last-run-time) 1000) " seconds"))
-          (dom/div nil (name (app-state :selected-tool))))))))
+          (dom/div nil (name (app-state :brush))))))))
 

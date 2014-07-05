@@ -150,7 +150,7 @@
                 :mouseup (om/update! app-state :mouse-drawing false)
                 :mousemove (when (:mouse-drawing @app-state)
                              (let [tile-pos (tile-pos-at canvas (:event mouseevent))]
-                               (case (:selected-tool @app-state)
+                               (case (:brush @app-state)
                                  :eraser (erase-at app-state tile-pos)
                                  :brush (paint-at app-state tile-pos))))))))))
 

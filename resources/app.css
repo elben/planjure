@@ -43,6 +43,10 @@ body {
   margin-bottom: 20px;
 }
 
+#toolbar .button-row {
+  margin-bottom: 10px
+}
+
 #status h2 {
   font-size: 20px;
 }
