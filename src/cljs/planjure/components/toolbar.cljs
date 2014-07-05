@@ -18,28 +18,6 @@
 (def algorithms {:dijkstra {:name "Dijkstra" :fn (time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (time-f plan/dfs)}})
 
-(defn size-selector-component [app-state owner]
-  ;; Expected app-state is one of the :options map in the world-size-config,
-  ;; along with a :selected-size whose value is the currently selected size.
-  (reify
-    om/IInitState
-    (init-state [_]
-      {})
-
-    ;; Use IRenderState here because we need to pass in the configuration-chan.
-    om/IRenderState
-    (render-state [_ {:keys [configuration-chan]}]
-      (dom/span
-        #js {:className (let [selected-class (if (:selected app-state) "selected")]
-                          (str "world-size-selector item-selector " selected-class))
-             ;; Need to @app-state here because cursors (in this case,
-             ;; app-state) are not guaranteed to be consistent outside of the
-             ;; React.js render cycles. Even though the cursor is used in the
-             ;; RenderState lexical scope, it is in a javascript callback, thus
-             ;; outside of the lifecycles.
-             :onClick #(put! configuration-chan {:kind :world-size-selector :value @app-state})}
-        (:text app-state)))))
-
 (defn size-component [app-state owner]
   (reify
     om/IInitState
@@ -47,15 +25,36 @@
 
     om/IRenderState
     (render-state [_ {:keys [configuration-chan]}]
-      (let [selected-size (get-in app-state [:world-size-config :selected-size])]
+      (let [selected-size (:world-size app-state)]
         (apply dom/div nil
-               (map
-                 (fn
-                   [size-name]
-                   (om/build size-selector-component
-                             (assoc (get-in app-state [:world-size-config :options size-name]) :selected (= selected-size size-name))
-                             {:init-state {:configuration-chan configuration-chan}}))
-                 [:small :medium :large]))))))
+               (for [[size-name {:keys [text] :as size-opts}] (:world-size-options app-state)]
+                 (om/build editor/item-selector-component
+                           app-state
+                           {:init-state {:configuration-chan configuration-chan
+                                         :tool-kind :world-size
+                                         :tool-name size-name
+                                         :tool-text text}})))))))
+
+(defn statistics-component [app-state owner]
+  (reify
+    om/IInitState
+    (init-state [_]
+      {})
+
+    om/IWillMount
+    (will-mount [_] nil)
+
+    om/IDidMount
+    (did-mount [_] nil)
+
+    om/IRender
+    (render [_]
+      (dom/div
+        nil
+        (dom/div
+          #js {:className :running-time}
+          (dom/div nil (str (/ (app-state :last-run-time) 1000) " seconds"))
+          (dom/div nil (name (app-state :brush))))))))
 
 (defn toolbar-component [app-state owner]
   (reify
@@ -74,26 +73,23 @@
               (when (= ch plan-chan)
                 (let [algo-fn ((algorithms (:algo @app-state)) :fn)
                       result (algo-fn (:world @app-state) (:setup @app-state))]
-                  ;; Need to use @ here because of cursors. I don't understand, but get
-                  ;; this error:  Cannot manipulate cursor outside of render phase, only
-                  ;; om.core/transact!, om.core/update!, and cljs.core/deref operations
-                  ;; allowed. Explained here:
-                  ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#debugging-om-components
+                  ;; Need to @app-state here because cursors (in this case,
+                  ;; app-state) are not guaranteed to be consistent outside of the
+                  ;; React.js render/render-state cycles.
                   (om/update! app-state :last-run-time (result :time))
                   (om/update! app-state :path (result :return))))
               (when (= ch configuration-chan)
                 (cond
-                  (= :world-size-selector (:kind v))
-                  (let [world-size (get-in v [:value :size])
-                        selected-size (get-in v [:value :name])]
-                    (om/update! app-state [:world-size-config :selected-size] selected-size)
-                    (om/update! app-state :world (plan/random-world world-size world-size)))
-
                   (= :algorithm (:kind v))
                   (om/update! app-state :algo (:value v))
 
                   (= :tool-selector (:kind v))
-                  (om/update! app-state (:tool-kind v) (:value v)))))))))
+                  (if (= (:tool-kind v) :world-size)
+                    (let [world-size (:value v)
+                          world-num-tiles (get-in @app-state [:world-size-options world-size :size])]
+                      (om/update! app-state :world-size world-size)
+                      (om/update! app-state :world (plan/random-world world-num-tiles world-num-tiles)))
+                    (om/update! app-state (:tool-kind v) (:value v))))))))))
 
     om/IDidMount
     (did-mount [this] nil)
@@ -150,25 +146,3 @@
           (dom/div #js {:className "section-title"} "Statistics")
           (dom/div #js {:className "section-wrapper"}
             (om/build statistics-component app-state)))))))
-
-(defn statistics-component [app-state owner]
-  (reify
-    om/IInitState
-    (init-state [_]
-      {})
-
-    om/IWillMount
-    (will-mount [_] nil)
-
-    om/IDidMount
-    (did-mount [_] nil)
-
-    om/IRender
-    (render [_]
-      (dom/div
-        nil
-        (dom/div
-          #js {:className :running-time}
-          (dom/div nil (str (/ (app-state :last-run-time) 1000) " seconds"))
-          (dom/div nil (name (app-state :brush))))))))
-

@@ -7,19 +7,31 @@
          :path []
          :algo :dijkstra
          :last-run-time 0
-         :world-size-config
+         :canvas { :width 400 :height 400 }
+
+         :world-size :small
+         :world-size-options
            {
-            :width-px 400 :height-px 400
-            :selected-size :small
-            :options
-              {
-               :small  { :name :small :text "Small"  :size 20  :tile-size 20 }
-               :medium { :name :medium :text "Medium" :size 40  :tile-size 10 }
-               :large  { :name :large :text "Large"  :size 200 :tile-size 2 }
-              }
+            :small  { :text "Small"  :size 20  :tile-size-px 20 }
+            :medium { :text "Medium" :size 40  :tile-size-px 10 }
+            :large  { :text "Large"  :size 200 :tile-size-px 2 }
            }
+
          :brush :brush
+         :brush-options
+           {
+            :brush { :text "Brush" }
+            :eraser { :text "Eraser" }
+           }
+
          :brush-size :size1
+         :brush-size-options
+           {
+            :size1 { :text "1" }
+            :size2 { :text "2" }
+            :size3 { :text "3" }
+           }
+
          :mouse-drawing false
          :mouse-pos [0 0]
         }))

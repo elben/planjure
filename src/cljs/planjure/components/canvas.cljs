@@ -24,8 +24,8 @@
 (defn weight-to-hex-color [weight] (color-mapping (dec weight)))
 
 (defn get-selected-tile-size []
-  (let [tile-size-name (get-in @appstate/app-state [:world-size-config :selected-size])
-        value (get-in @appstate/app-state [:world-size-config :options tile-size-name :tile-size])]
+  (let [tile-size-name (:world-size @appstate/app-state)
+        value (get-in @appstate/app-state [:world-size-options tile-size-name :tile-size-px])]
     value))
 
 (defn draw-rect-tile 
@@ -170,5 +170,5 @@
 
     om/IRender
     (render [this]
-      (dom/canvas #js {:id "world-canvas" :width (get-in @appstate/app-state [:world-size-config :width-px]) :height (get-in @appstate/app-state [:world-size-config :height-px]) :className "world-canvas" :ref "world-canvas-ref"}))))
+      (dom/canvas #js {:id "world-canvas" :width (get-in @appstate/app-state [:canvas :width]) :height (get-in @appstate/app-state [:canvas :height]) :className "world-canvas" :ref "world-canvas-ref"}))))
 
