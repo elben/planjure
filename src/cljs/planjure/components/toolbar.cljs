@@ -4,7 +4,7 @@
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <!]]
             [planjure.plan :as plan]
-            [planjure.components.editor :as editor]))
+            [planjure.history :as history]))
 
 (def plan-chan (chan))
 
@@ -18,6 +18,41 @@
 (def algorithms {:dijkstra {:name "Dijkstra" :fn (time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (time-f plan/dfs)}})
 
+(defn item-selector-component [app-state owner]
+  (reify
+    om/IInitState
+    (init-state [_]
+      {})
+
+    om/IRenderState
+    (render-state [_ {:keys [configuration-chan tool-kind tool-name tool-text selected]}]
+      (let [css-class (if (= tool-name (tool-kind app-state)) "selected" "")]
+        (dom/span
+          #js {:className (str "item-selector " css-class)
+               :onClick #(put! configuration-chan {:kind :tool-selector :tool-kind tool-kind :value tool-name})}
+          tool-text)))))
+
+(defn editor-component [app-state owner]
+  (reify
+    om/IRenderState
+    (render-state [_ {:keys [configuration-chan]}]
+      (dom/div
+        nil
+        (apply dom/div
+               #js {:className "button-row"}
+               (for [[brush-tool-name {:keys [text]}] (:brush-options app-state)]
+                 (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
+                                                                           :tool-kind :brush
+                                                                           :tool-name brush-tool-name
+                                                                           :tool-text text}})))
+        (apply dom/div
+               #js {:className "button-row"}
+               (for [[size-name {:keys [text]}] (:brush-size-options app-state)]
+                 (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
+                                                                           :tool-kind :brush-size
+                                                                           :tool-name size-name
+                                                                           :tool-text text}})))))))
+
 (defn size-component [app-state owner]
   (reify
     om/IInitState
@@ -28,7 +63,7 @@
       (let [selected-size (:world-size app-state)]
         (apply dom/div nil
                (for [[size-name {:keys [text] :as size-opts}] (:world-size-options app-state)]
-                 (om/build editor/item-selector-component
+                 (om/build item-selector-component
                            app-state
                            {:init-state {:configuration-chan configuration-chan
                                          :tool-kind :world-size
@@ -79,23 +114,33 @@
                   (om/update! app-state :last-run-time (result :time))
                   (om/update! app-state :path (result :return))))
               (when (= ch configuration-chan)
-                (cond
-                  (= :algorithm (:kind v))
+                (case (:kind v)
+                  :algorithm
                   (om/update! app-state :algo (:value v))
 
-                  (= :tool-selector (:kind v))
-                  (if (= (:tool-kind v) :world-size)
+                  :tool-selector
+                  (case (:tool-kind v)
+                    :world-size
                     (let [world-size (:value v)
                           world-num-tiles (get-in @app-state [:world-size-options world-size :size])]
                       (om/update! app-state :world-size world-size)
                       (om/update! app-state :world (plan/random-world world-num-tiles world-num-tiles)))
+
+                    :history
+                    (case (:value v)
+                      :undo
+                      (history/undo)
+                      :redo
+                      (history/redo))
+
+                    ;; Default case
                     (om/update! app-state (:tool-kind v) (:value v))))))))))
 
     om/IDidMount
     (did-mount [this] nil)
 
-    om/IRender
-    (render [this]
+    om/IRenderState
+    (render-state [this {:keys [configuration-chan]}]
       (dom/div
         nil
         (dom/div
@@ -104,16 +149,30 @@
           (dom/div #js {:className "section-wrapper"}
             (om/build size-component
               app-state
-              {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})))
+              {:init-state {:configuration-chan configuration-chan}})))
 
         (dom/div
           nil
           (dom/div #js {:className "section-title"} "Editor")
           (dom/div #js {:className "section-wrapper"}
-            (om/build editor/editor-component
+            (om/build editor-component
               app-state
-              {:init-state {:configuration-chan (om/get-state owner :configuration-chan)}})))
+              {:init-state {:configuration-chan configuration-chan}})))
 
+        (dom/div
+          nil
+          (dom/div #js {:className "section-title"} "History")
+          (dom/div #js {:className "section-wrapper"}
+                   (dom/div
+                     #js {:className "button-row"}
+                     (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
+                                                                                      :tool-kind :history
+                                                                                      :tool-name :undo
+                                                                                      :tool-text "Undo"}})
+                     (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
+                                                                                      :tool-kind :history
+                                                                                      :tool-name :redo
+                                                                                      :tool-text "Redo"}}))))
         (dom/div
           nil
           (dom/div #js {:className "section-title"} "Algorithm")

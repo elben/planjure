@@ -5,7 +5,8 @@
             [goog.events :as events]
             [cljs.core.async :refer [put! chan <!]]
             [planjure.plan :as plan]
-            [planjure.appstate :as appstate]))
+            [planjure.appstate :as appstate]
+            [planjure.history :as history]))
 
 (def mouse-chan (chan))
 
@@ -146,8 +147,17 @@
           (while true
             (let [mouseevent (<! mouse-chan)]
               (case (:mouseevent mouseevent)
-                :mousedown (om/update! app-state :mouse-drawing true)
-                :mouseup (om/update! app-state :mouse-drawing false)
+                :mousedown (let [world (:world @appstate/app-state)]
+                             ;; Consider a mouseup an atomic commit of the user
+                             ;; brush stroke.
+                             (om/update! app-state :mouse-drawing true)
+                             (history/push-world world)
+                             )
+                :mouseup (let [world (:world @appstate/app-state)]
+                           ;; Consider a mouseup an atomic commit of the user
+                           ;; brush stroke.
+                           ; (history/push-world world)
+                           (om/update! app-state :mouse-drawing false))
                 :mousemove (when (:mouse-drawing @app-state)
                              (let [tile-pos (tile-pos-at canvas (:event mouseevent))]
                                (case (:brush @app-state)
