@@ -4,9 +4,7 @@ Path-planning algorithms and demo in ClojureScript, using Om and core.async.
 
 Or, a self-study in Clojure, ClojureScript, Om and core.async.
 
-# Running
-
-Go here for a live version:
+Go here for a live version (possibly out-of-date): [http://elbenshira.com/projects/planjure](http://elbenshira.com/projects/planjure).
 
 # Development
 
