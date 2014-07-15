@@ -122,9 +122,11 @@
                   (case (:tool-kind v)
                     :world-size
                     (let [world-size (:value v)
-                          world-num-tiles (get-in @app-state [:world-size-options world-size :size])]
+                          world-num-tiles (get-in @app-state [:world-size-options world-size :size])
+                          last-row-col (dec world-num-tiles)]
                       (om/update! app-state :world-size world-size)
-                      (om/update! app-state :world (plan/random-world world-num-tiles world-num-tiles)))
+                      (om/update! app-state :world (plan/random-world world-num-tiles world-num-tiles))
+                      (om/update! app-state [:setup :finish] [last-row-col last-row-col]))
 
                     :history
                     (case (:value v)
