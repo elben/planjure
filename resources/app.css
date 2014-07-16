@@ -67,6 +67,14 @@ body {
   margin-right: 6px;
   cursor: pointer;
   border-radius: 4px;
+
+  /* Don't highlight buttons on clicks */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .item-selector:hover, .item-selector.selected {
