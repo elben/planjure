@@ -84,12 +84,10 @@ body {
 .item-selector.disabled {
   background: #aaa;
   color: #666;
-  border: 3px solid #999;
+  border: 3px solid #aaa;
   cursor: not-allowed;
 }
 
 .item-selector.disabled:hover {
-  /* background: #aaa; */
-  /* color: #666; */
   border: 3px solid #999;
 }
