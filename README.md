@@ -8,6 +8,10 @@ Go here for a live version (possibly out-of-date): [http://elbenshira.com/projec
 
 # Development
 
-```
+```bash
+# Build .cljx files into target/generated-src
+lein cljx auto
+
+# Build cljs files from src/cljs and target/generated-src
 lein cljsbuild auto planjure
 ```

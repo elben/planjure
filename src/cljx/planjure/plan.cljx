@@ -1,29 +1,7 @@
 (ns planjure.plan
-  (:require [tailrecursion.priority-map :refer [priority-map]]))
-
-(def world
-  [[1 1 1 1 1]
-   [1 1 1 1 1]
-   [9 9 9 1 1]
-   [1 1 9 1 9]
-   [1 9 9 1 9]
-   [1 1 1 1 9]])
-
-(def world2
-  [[1 1 1 1 1]
-   [3 3 1 1 1]
-   [1 1 1 1 1]
-   [1 1 1 1 1]
-   [1 1 1 1 1]
-   [1 1 1 1 1]])
-
-(def world3
-  [[0 0 0 0 0]
-   [3 3 1 1 1]
-   [0 0 0 0 0]
-   [0 0 0 0 0]
-   [0 0 0 0 0]
-   [0 0 0 0 0]])
+  (:require [#+cljs tailrecursion.priority-map
+             #+clj data.priority-map
+             :refer [priority-map]]))
 
 (def setup
   {:start [5 0]
@@ -284,4 +262,5 @@
           (recur (into stack improved-neighbors) updated-g-costs updated-previous)))))
 
 ;; arrows could be cool for planning http://www.alanwood.net/unicode/arrows.html
+
 

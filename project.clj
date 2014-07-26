@@ -7,17 +7,31 @@
                  [org.clojure/clojurescript "0.0-2173"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [om "0.6.2"]
-                 [tailrecursion/cljs-priority-map "1.1.0"]]
+                 [org.clojure/data.priority-map "0.0.5"]
+                 [tailrecursion/cljs-priority-map "1.1.0"]
+                 [com.cemerick/clojurescript.test "0.3.1"]]
 
-  :plugins [[lein-cljsbuild "1.0.2"]]
+  :plugins [[lein-cljsbuild "1.0.2"]
+            [com.keminglabs/cljx "0.4.0"]]
 
-  :source-paths ["src/cljs"]
+  :cljx {:builds [{:source-paths ["src/cljx"]
+                   :output-path "target/generated-src"
+                   :rules :clj}
+
+                  {:source-paths ["src/cljx"]
+                   :output-path "target/generated-src"
+                   :rules :cljs}]}
+
+  :hooks [cljx.hooks]
+
+  :source-paths ["src" "target/generated-src"]
 
   :main planjure.plan
 
   :cljsbuild {
+   :test-commands {"unit-tests" ["phantomjs" :runner "planjure.js"]}
    :builds [{:id "planjure"
-             :source-paths ["src"]
+             :source-paths ["src/cljs" "test/cljs" "target/generated-src"]
              :compiler {
                :output-to "planjure.js"
                :output-dir "out"

@@ -35,7 +35,7 @@
     (render-state [_ {:keys [configuration-chan tool-kind tool-name tool-text is-disabled-fn]}]
       (let [selected-css (when (= tool-name (tool-kind app-state)) "selected")
             disabled-css (when (and is-disabled-fn (is-disabled-fn)) "disabled")
-            css-class (str seelcted-css " " disabled-css)]
+            css-class (str selected-css " " disabled-css)]
         (dom/span
           #js {:className (str "item-selector " css-class)
                :onClick #(put! configuration-chan {:kind :tool-selector :tool-kind tool-kind :value tool-name})}
