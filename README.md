@@ -1,5 +1,7 @@
 # Planjure
 
+[![Build Status](https://travis-ci.org/elben/planjure.svg?branch=master)](https://travis-ci.org/elben/planjure)
+
 Path-planning algorithms and demo in ClojureScript, using Om and core.async.
 
 Or, a self-study in Clojure, ClojureScript, Om and core.async.
