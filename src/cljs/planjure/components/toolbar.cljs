@@ -25,8 +25,17 @@
       {})
 
     om/IRenderState
-    (render-state [_ {:keys [configuration-chan tool-kind tool-name tool-text selected]}]
-      (let [css-class (if (= tool-name (tool-kind app-state)) "selected" "")]
+    ;; configuration-chan - Config chan to push into.
+    ;; tool-kind - The tool kind as specified by the appstate key. e.g.
+    ;;             :world-size.
+    ;; tool-name - Name of specific tool for this selector. e.g. :small.
+    ;; tool-text - Display text.
+    ;; is-disabled-fn - Optional fn that returns true when selector should be
+    ;;                  disabled.
+    (render-state [_ {:keys [configuration-chan tool-kind tool-name tool-text is-disabled-fn]}]
+      (let [selected-css (when (= tool-name (tool-kind app-state)) "selected")
+            disabled-css (when (and is-disabled-fn (is-disabled-fn)) "disabled")
+            css-class (str seelcted-css " " disabled-css)]
         (dom/span
           #js {:className (str "item-selector " css-class)
                :onClick #(put! configuration-chan {:kind :tool-selector :tool-kind tool-kind :value tool-name})}
@@ -126,7 +135,8 @@
                           last-row-col (dec world-num-tiles)]
                       (om/update! app-state :world-size world-size)
                       (om/update! app-state :world (plan/random-world world-num-tiles world-num-tiles))
-                      (om/update! app-state [:setup :finish] [last-row-col last-row-col]))
+                      (om/update! app-state [:setup :finish] [last-row-col last-row-col])
+                      (history/reset))
 
                     :history
                     (case (:value v)
@@ -168,13 +178,15 @@
                    (dom/div
                      #js {:className "button-row"}
                      (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
-                                                                                      :tool-kind :history
-                                                                                      :tool-name :undo
-                                                                                      :tool-text "Undo"}})
+                                                                               :tool-kind :history
+                                                                               :tool-name :undo
+                                                                               :tool-text "Undo"
+                                                                               :is-disabled-fn (complement history/undoable)}})
                      (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
-                                                                                      :tool-kind :history
-                                                                                      :tool-name :redo
-                                                                                      :tool-text "Redo"}}))))
+                                                                               :tool-kind :history
+                                                                               :tool-name :redo
+                                                                               :tool-text "Redo"
+                                                                               :is-disabled-fn (complement history/redoable)}}))))
         (dom/div
           nil
           (dom/div #js {:className "section-title"} "Algorithm")

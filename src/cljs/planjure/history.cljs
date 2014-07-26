@@ -29,3 +29,13 @@
     
 (defn redo []
   (move-stack world-future world-history))
+
+(defn reset []
+  (reset! world-history [])
+  (reset! world-future []))
+
+(defn undoable []
+  (> (count @world-history) 0))
+
+(defn redoable []
+  (> (count @world-future) 0))
