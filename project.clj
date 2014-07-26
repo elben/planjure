@@ -26,8 +26,6 @@
 
   :source-paths ["src" "target/generated-src"]
 
-  :main planjure.plan
-
   :cljsbuild {
    :test-commands {"unit-tests" ["phantomjs" :runner "planjure.js"]}
    :builds [{:id "planjure"
