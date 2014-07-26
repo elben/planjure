@@ -136,6 +136,7 @@
                       (om/update! app-state :world-size world-size)
                       (om/update! app-state :world (plan/random-world world-num-tiles world-num-tiles))
                       (om/update! app-state [:setup :finish] [last-row-col last-row-col])
+                      (om/update! app-state :path [])
                       (history/reset))
 
                     :history
