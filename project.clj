@@ -8,10 +8,10 @@
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [om "0.6.2"]
                  [org.clojure/data.priority-map "0.0.5"]
-                 [tailrecursion/cljs-priority-map "1.1.0"]
-                 [com.cemerick/clojurescript.test "0.3.1"]]
+                 [tailrecursion/cljs-priority-map "1.1.0"]]
 
   :plugins [[lein-cljsbuild "1.0.2"]
+            [com.cemerick/clojurescript.test "0.3.1"]
             [com.keminglabs/cljx "0.4.0"]]
 
   :cljx {:builds [{:source-paths ["src/cljx"]
@@ -25,13 +25,26 @@
   :hooks [cljx.hooks]
 
   :source-paths ["src" "target/generated-src"]
+  :test-paths ["test/clj"]
 
   :cljsbuild {
-   :test-commands {"unit-tests" ["phantomjs" :runner "planjure.js"]}
-   :builds [{:id "planjure"
-             :source-paths ["src/cljs" "test/cljs" "target/generated-src"]
+   :test-commands {"unit-tests" ["phantomjs" :runner "target/cljs/testable.cljs"]}
+   :builds [
+            ;; cljs build for distribution
+            {:id "planjure"
+             :source-paths ["src/cljs" "target/generated-src"]
              :compiler {
                :output-to "planjure.js"
                :output-dir "out"
                :optimizations :none
-               :source-map true}}]})
+               :source-map true}}
+
+            ;; cljs tests build
+            {:id "planjure-test"
+             :source-paths ["src/cljs" "target/generated-src" "test/cljs"]
+             :compiler {
+               :output-to "target/cljs/testable.cljs"
+               ; :output-dir "out-test"
+               :pretty-print true
+               :optimizations :whitespace}}
+            ]})

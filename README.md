@@ -15,3 +15,12 @@ lein cljx auto
 # Build cljs files from src/cljs and target/generated-src
 lein cljsbuild auto planjure
 ```
+
+Running tests:
+
+```bash
+lein test
+
+# cljs tests (not working yet)
+lein do cljsbuild once planjure-test, cljsbuild test
+```

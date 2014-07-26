@@ -1,6 +1,6 @@
 (ns planjure.plan
   (:require [#+cljs tailrecursion.priority-map
-             #+clj data.priority-map
+             #+clj clojure.data.priority-map
              :refer [priority-map]]))
 
 (def setup
