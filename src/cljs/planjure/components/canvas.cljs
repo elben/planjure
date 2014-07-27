@@ -5,6 +5,7 @@
             [goog.events :as events]
             [cljs.core.async :refer [put! chan <!]]
             [planjure.plan :as plan]
+            [planjure.utils :as utils]
             [planjure.appstate :as appstate]
             [planjure.history :as history]))
 
@@ -103,15 +104,14 @@
     {:x (max 0 (int (/ x tile-size))) :y (max 0 (int (/ y tile-size)))}))
 
 (defn update-world!
-  [app-state x y incr]
   "Increase cost at x, y position in the world passed in via the app-state
   cursor."
-  (let [world (:world @appstate/app-state)
-        row (world y)
-        cost (row x)
-        new-cost (max 1 (min (+ incr cost) 8))
-        new-row (assoc row x new-cost)
-        new-world (assoc world y new-row)]
+  [app-state x y multiplier]
+  (let [brush-size (:brush-size @appstate/app-state)
+        matrix (get-in @appstate/app-state [:brush-size-options brush-size :matrix])
+        new-world (utils/replace-world (:world @appstate/app-state)
+                                       matrix
+                                       x y multiplier)]
     (om/update! app-state :world new-world)))
 
 (defn erase-at
@@ -147,22 +147,25 @@
           (while true
             (let [mouseevent (<! mouse-chan)]
               (case (:mouseevent mouseevent)
-                :mousedown (let [world (:world @appstate/app-state)]
-                             ;; Consider a mouseup an atomic commit of the user
-                             ;; brush stroke.
-                             (om/update! app-state :mouse-drawing true)
-                             (history/push-world world)
-                             )
-                :mouseup (let [world (:world @appstate/app-state)]
-                           ;; Consider a mouseup an atomic commit of the user
-                           ;; brush stroke.
-                           ; (history/push-world world)
-                           (om/update! app-state :mouse-drawing false))
-                :mousemove (when (:mouse-drawing @app-state)
-                             (let [tile-pos (tile-pos-at canvas (:event mouseevent))]
-                               (case (:brush @app-state)
-                                 :eraser (erase-at app-state tile-pos)
-                                 :brush (paint-at app-state tile-pos))))))))))
+                ;; On mousedown, user starts drawing phase.
+                :mousedown
+                (let [world (:world @appstate/app-state)]
+                  (om/update! app-state :mouse-drawing true)
+                  (history/push-world world))
+
+                ;; Consider a mouseup an atomic commit of the user
+                ;; brush stroke.
+                :mouseup
+                (let [world (:world @appstate/app-state)]
+                  (om/update! app-state :mouse-drawing false))
+
+                ;; Actually draw when user moves mouse.
+                :mousemove
+                (when (:mouse-drawing @app-state)
+                  (let [tile-pos (tile-pos-at canvas (:event mouseevent))]
+                    (case (:brush @app-state)
+                      :eraser (erase-at app-state tile-pos)
+                      :brush (paint-at app-state tile-pos))))))))))
 
     ; Invoked directly after rendering. What triggers a render? An update in
     ; the component's data. And since what we passed to this component was the

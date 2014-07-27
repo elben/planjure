@@ -27,9 +27,15 @@
          :brush-size :size1
          :brush-size-options
            {
-            :size1 { :text "1" }
-            :size2 { :text "2" }
-            :size3 { :text "3" }
+            :size1 { :text "1" :matrix [[1]] }
+            :size2 { :text "2" :matrix [[0 1 0]
+                                        [1 1 1]
+                                        [0 1 0]] }
+            :size3 { :text "3" :matrix [[0 1 1 1 0]
+                                        [1 1 2 1 1]
+                                        [1 2 2 2 1]
+                                        [1 1 2 1 1]
+                                        [0 1 1 1 0]] }
            }
 
          :mouse-drawing false
