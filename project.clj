@@ -20,12 +20,17 @@
 
                   {:source-paths ["src/cljx"]
                    :output-path "target/generated-src"
-                   :rules :cljs}]}
+                   :rules :cljs}
+
+                  {:source-paths ["test"]
+                   :output-path "target/generated-test"
+                   :rules :clj}
+                  ]}
 
   :hooks [cljx.hooks]
 
   :source-paths ["src" "target/generated-src"]
-  :test-paths ["test/clj"]
+  :test-paths ["target/generated-test"]
 
   :cljsbuild {
    :test-commands {"unit-tests" ["phantomjs" :runner "target/cljs/testable.cljs"]}
@@ -41,7 +46,7 @@
 
             ;; cljs tests build
             {:id "planjure-test"
-             :source-paths ["src/cljs" "target/generated-src" "test/cljs"]
+             :source-paths ["src/cljs" "target/generated-src" "test"]
              :compiler {
                :output-to "target/cljs/testable.cljs"
                ; :output-dir "out-test"
