@@ -22,6 +22,7 @@
 
 (def color-mapping
   ["#09738A", "#adc5ad" "#c6c294" "#7c9a53" "#578633" "#3b621a" "#2d5010" "#26470b"])
+   ; "#756e68" "#9b9186" "#c0b1a3" "#dacec2" "#f2efeb"])
 
 (defn weight-to-hex-color [weight] (color-mapping (dec weight)))
 
@@ -103,26 +104,19 @@
         tile-size (get-selected-tile-size)]
     {:x (max 0 (int (/ x tile-size))) :y (max 0 (int (/ y tile-size)))}))
 
-(def temp-world (atom nil))
-
 (defn update-world!
   "Increase cost at x, y position in the world passed in via the app-state
   cursor."
   [app-state x y multiplier]
   (let [brush-size (:brush-size @appstate/app-state)
         matrix (get-in @appstate/app-state [:brush-size-options brush-size :matrix])
-        world (if (nil? @temp-world)
-                (:world @appstate/app-state)
-                @temp-world)
-        new-world (utils/update-world world
+        new-world (utils/update-world (:world @appstate/app-state)
                                       matrix
                                       x y multiplier)]
     ;; TODO updating app-state right here takes a LONG time because it renders
-    ;; all components w/ a cursor to :world. We shoudl store temp world
-    ;; somewhere else, and commit in the mouseup event.
-    (reset! temp-world new-world)
-    ; (om/update! app-state :world new-world)
-    ))
+    ;; all components w/ a cursor to :world. We need to use cursors for other
+    ;; non-canvas components, instead of just passing in the whole state.
+    (om/update! app-state :world new-world)))
 
 (defn erase-at
   [app-state tile-pos]
@@ -168,8 +162,6 @@
                 ;; brush stroke.
                 :mouseup
                 (let [world (:world @appstate/app-state)]
-                  (om/update! app-state :world @temp-world)
-                  (reset! temp-world nil)
                   (om/update! app-state :mouse-drawing false))
 
                 ;; Actually draw when user moves mouse.
