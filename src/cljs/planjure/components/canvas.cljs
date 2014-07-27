@@ -103,16 +103,26 @@
         tile-size (get-selected-tile-size)]
     {:x (max 0 (int (/ x tile-size))) :y (max 0 (int (/ y tile-size)))}))
 
+(def temp-world (atom nil))
+
 (defn update-world!
   "Increase cost at x, y position in the world passed in via the app-state
   cursor."
   [app-state x y multiplier]
   (let [brush-size (:brush-size @appstate/app-state)
         matrix (get-in @appstate/app-state [:brush-size-options brush-size :matrix])
-        new-world (utils/update-world (:world @appstate/app-state)
-                                       matrix
-                                       x y multiplier)]
-    (om/update! app-state :world new-world)))
+        world (if (nil? @temp-world)
+                (:world @appstate/app-state)
+                @temp-world)
+        new-world (utils/update-world world
+                                      matrix
+                                      x y multiplier)]
+    ;; TODO updating app-state right here takes a LONG time because it renders
+    ;; all components w/ a cursor to :world. We shoudl store temp world
+    ;; somewhere else, and commit in the mouseup event.
+    (reset! temp-world new-world)
+    ; (om/update! app-state :world new-world)
+    ))
 
 (defn erase-at
   [app-state tile-pos]
@@ -151,12 +161,15 @@
                 :mousedown
                 (let [world (:world @appstate/app-state)]
                   (om/update! app-state :mouse-drawing true)
+                  ;; Commit the previous world into history
                   (history/push-world world))
 
                 ;; Consider a mouseup an atomic commit of the user
                 ;; brush stroke.
                 :mouseup
                 (let [world (:world @appstate/app-state)]
+                  (om/update! app-state :world @temp-world)
+                  (reset! temp-world nil)
                   (om/update! app-state :mouse-drawing false))
 
                 ;; Actually draw when user moves mouse.

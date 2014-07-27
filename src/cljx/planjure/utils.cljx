@@ -37,3 +37,9 @@
             world)))))
 
 
+(defn time-f [f]
+  (fn [& args]
+    (let [start #+cljs (js/Date.) #+clj (System/currentTimeMillis)
+          ret (apply f args)]
+      {:time (- #+cljs (js/Date.) #+clj (System/currentTimeMillis) start)
+       :return ret})))

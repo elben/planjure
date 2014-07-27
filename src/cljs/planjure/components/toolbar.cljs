@@ -3,20 +3,15 @@
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <!]]
+            [planjure.utils :as utils]
             [planjure.plan :as plan]
             [planjure.history :as history]))
 
 (def plan-chan (chan))
 
-(defn time-f [f]
-  (fn [& args]
-    (let [start (js/Date.)
-          ret (apply f args)]
-      {:time (- (js/Date.) start)
-       :return ret})))
 
-(def algorithms {:dijkstra {:name "Dijkstra" :fn (time-f plan/dijkstra)}
-                 :dfs      {:name "Depth-first" :fn (time-f plan/dfs)}})
+(def algorithms {:dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
+                 :dfs      {:name "Depth-first" :fn (utils/time-f plan/dfs)}})
 
 (defn item-selector-component [app-state owner]
   (reify
