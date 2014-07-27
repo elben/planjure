@@ -109,7 +109,7 @@
   [app-state x y multiplier]
   (let [brush-size (:brush-size @appstate/app-state)
         matrix (get-in @appstate/app-state [:brush-size-options brush-size :matrix])
-        new-world (utils/replace-world (:world @appstate/app-state)
+        new-world (utils/update-world (:world @appstate/app-state)
                                        matrix
                                        x y multiplier)]
     (om/update! app-state :world new-world)))
