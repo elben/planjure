@@ -9,6 +9,9 @@
             [planjure.appstate :as appstate]
             [planjure.history :as history]))
 
+(def update-world-time (atom 0))
+(def canvas-redraw-time (atom 0))
+
 (def mouse-chan (chan))
 
 ; weight is 0 to 9
@@ -32,65 +35,66 @@
     value))
 
 (defn draw-rect-tile 
-  ([context row col color] (draw-rect-tile context row col color (get-selected-tile-size)))
-  ([context row col color size]
-   (let [y (* row (get-selected-tile-size))
-         x (* col (get-selected-tile-size))]
-     (set! (.-fillStyle context) color)
-     (.fillRect context x y size size))))
+  [context row col color size]
+  (let [y (* row size)
+        x (* col size)]
+    (set! (.-fillStyle context) color)
+    (.fillRect context x y size size)
+    ))
 
 (defn draw-circle
-  ([context row col color] (draw-circle context row col color (get-selected-tile-size)))
-  ([context row col color size]
-   (let [radius (/ size 2)
-         y (+ (* row size) radius)
-         x (+ (* col size) radius)]
-     (set! (.-fillStyle context) color)
-     (.beginPath context)
-     (.arc context x y radius 0 (* 2 Math/PI) false)
-     (.closePath context)
-     (set! (.-strokeStyle context) color)
-     (.stroke context))))
+  [context row col color size]
+  (let [radius (/ size 2)
+        y (+ (* row size) radius)
+        x (+ (* col size) radius)]
+    (set! (.-fillStyle context) color)
+    (.beginPath context)
+    (.arc context x y radius 0 (* 2 Math/PI) false)
+    (.closePath context)
+    (set! (.-strokeStyle context) color)
+    (.stroke context)))
 
-(defn draw-start-finish-marker [context row col]
+(defn draw-start-finish-marker [context row col size]
   (let [color "#ff0000"]
-    (draw-rect-tile context row col color)))
+    (draw-rect-tile context row col color size)))
 
 (defn draw-path-market [context row col])
 
-(defn draw-path [context path]
+(defn draw-path [context path size]
   (doseq [node path]
-    (draw-circle context (nth node 0) (nth node 1) "#00ff00")))
+    (draw-circle context (nth node 0) (nth node 1) "#00ff00" size)))
 
 ;; context - Canvas context
 ;; row -
 ;; col
 ;; weight - 0 to 9
-(defn draw-tile [context row col weight]
+(defn draw-tile [context row col weight size]
   (let [color (weight-to-hex-color weight)]
-    (draw-rect-tile context row col color)))
+    (draw-rect-tile context row col color size)))
 
 (defn refresh-world [app-state owner dom-node-ref]
   (let [canvas (om/get-node owner dom-node-ref)
         context (.getContext canvas "2d")
         world (:world app-state)
-        setup (:setup app-state)]
+        setup (:setup app-state)
+        size (get-selected-tile-size)]
     ; clear canvas
     (set! (.-width canvas) (.-width canvas))
 
     ; draw world
-    (dotimes [row (count world)]
-      (dotimes [col (count (nth world row))]
-        (draw-tile context row col (nth (nth world row) col))))
+    (dotimes [r (count world)]
+      (let [row (nth world r)]
+        (dotimes [c (count row)]
+          (draw-tile context r c (nth row c) size))))
 
-    ;draw start/finish
+    ; draw start/finish
     (let [[start-row start-col] (get-in app-state [:setup :start])
           [finish-row finish-col] (get-in app-state [:setup :finish])]
-      (draw-start-finish-marker context start-row start-col)
-      (draw-start-finish-marker context finish-row finish-col))
+      (draw-start-finish-marker context start-row start-col size)
+      (draw-start-finish-marker context finish-row finish-col size))
 
     ; draw path (if exists)
-    (draw-path context (:path app-state))))
+    (draw-path context (:path app-state) size)))
 
 (defn mouse-pos-at
   [canvas e]

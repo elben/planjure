@@ -9,11 +9,10 @@
 
 (def plan-chan (chan))
 
-
 (def algorithms {:dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (utils/time-f plan/dfs)}})
 
-(defn item-selector-component [app-state owner]
+(defn item-selector-component [cursor owner]
   (reify
     om/IInitState
     (init-state [_]
@@ -28,7 +27,7 @@
     ;; is-disabled-fn - Optional fn that returns true when selector should be
     ;;                  disabled.
     (render-state [_ {:keys [configuration-chan tool-kind tool-name tool-text is-disabled-fn]}]
-      (let [selected-css (when (= tool-name (tool-kind app-state)) "selected")
+      (let [selected-css (when (= tool-name (tool-kind cursor)) "selected")
             disabled-css (when (and is-disabled-fn (is-disabled-fn)) "disabled")
             css-class (str selected-css " " disabled-css)]
         (dom/span
@@ -36,7 +35,7 @@
                :onClick #(put! configuration-chan {:kind :tool-selector :tool-kind tool-kind :value tool-name})}
           tool-text)))))
 
-(defn editor-component [app-state owner]
+(defn editor-component [cursor owner]
   (reify
     om/IRenderState
     (render-state [_ {:keys [configuration-chan]}]
@@ -44,37 +43,41 @@
         nil
         (apply dom/div
                #js {:className "button-row"}
-               (for [[brush-tool-name {:keys [text]}] (:brush-options app-state)]
-                 (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
-                                                                           :tool-kind :brush
-                                                                           :tool-name brush-tool-name
-                                                                           :tool-text text}})))
+               (for [[brush-tool-name {:keys [text]}] (:brush-options cursor)]
+                 (om/build item-selector-component
+                           {:brush (:brush cursor)}
+                           {:init-state {:configuration-chan configuration-chan
+                                         :tool-kind :brush
+                                         :tool-name brush-tool-name
+                                         :tool-text text}})))
         (apply dom/div
                #js {:className "button-row"}
-               (for [[size-name {:keys [text]}] (:brush-size-options app-state)]
-                 (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
-                                                                           :tool-kind :brush-size
-                                                                           :tool-name size-name
-                                                                           :tool-text text}})))))))
+               (for [[size-name {:keys [text]}] (:brush-size-options cursor)]
+                 (om/build item-selector-component
+                           {:brush-size (:brush-size cursor)}
+                           {:init-state {:configuration-chan configuration-chan
+                                         :tool-kind :brush-size
+                                         :tool-name size-name
+                                         :tool-text text}})))))))
 
-(defn size-component [app-state owner]
+(defn size-component [cursor owner]
   (reify
     om/IInitState
     (init-state [_] {})
 
     om/IRenderState
     (render-state [_ {:keys [configuration-chan]}]
-      (let [selected-size (:world-size app-state)]
+      (let [selected-size (:world-size cursor)]
         (apply dom/div nil
-               (for [[size-name {:keys [text] :as size-opts}] (:world-size-options app-state)]
+               (for [[size-name {:keys [text] :as size-opts}] (:world-size-options cursor)]
                  (om/build item-selector-component
-                           app-state
+                           {:world-size (:world-size cursor)}
                            {:init-state {:configuration-chan configuration-chan
                                          :tool-kind :world-size
                                          :tool-name size-name
                                          :tool-text text}})))))))
 
-(defn statistics-component [app-state owner]
+(defn statistics-component [cursor owner]
   (reify
     om/IInitState
     (init-state [_]
@@ -92,8 +95,8 @@
         nil
         (dom/div
           #js {:className :running-time}
-          (dom/div nil (str (/ (app-state :last-run-time) 1000) " seconds"))
-          (dom/div nil (name (app-state :brush))))))))
+          (dom/div nil (str (/ (cursor :last-run-time) 1000) " seconds"))
+          (dom/div nil (name (cursor :brush))))))))
 
 (defn toolbar-component [app-state owner]
   (reify
@@ -156,7 +159,7 @@
           (dom/div #js {:className "section-title"} "World")
           (dom/div #js {:className "section-wrapper"}
             (om/build size-component
-              app-state
+              {:world-size (:world-size app-state) :world-size-options (:world-size-options app-state)}
               {:init-state {:configuration-chan configuration-chan}})))
 
         (dom/div
@@ -164,8 +167,11 @@
           (dom/div #js {:className "section-title"} "Editor")
           (dom/div #js {:className "section-wrapper"}
             (om/build editor-component
-              app-state
-              {:init-state {:configuration-chan configuration-chan}})))
+                      {:brush (:brush app-state)
+                       :brush-options (:brush-options app-state)
+                       :brush-size (:brush-size app-state)
+                       :brush-size-options (:brush-size-options app-state)}
+                      {:init-state {:configuration-chan configuration-chan}})))
 
         (dom/div
           nil
@@ -173,16 +179,24 @@
           (dom/div #js {:className "section-wrapper"}
                    (dom/div
                      #js {:className "button-row"}
-                     (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
-                                                                               :tool-kind :history
-                                                                               :tool-name :undo
-                                                                               :tool-text "Undo"
-                                                                               :is-disabled-fn (complement history/undoable)}})
-                     (om/build item-selector-component app-state {:init-state {:configuration-chan configuration-chan
-                                                                               :tool-kind :history
-                                                                               :tool-name :redo
-                                                                               :tool-text "Redo"
-                                                                               :is-disabled-fn (complement history/redoable)}}))))
+                     (om/build item-selector-component
+                               ;; Pass in :world so that button gets
+                               ;; enable/disabled on world changes
+                               {:history (:history app-state) :world (:world app-state)}
+                               {:init-state {:configuration-chan configuration-chan
+                                             :tool-kind :history
+                                             :tool-name :undo
+                                             :tool-text "Undo"
+                                             :is-disabled-fn (complement history/undoable)}})
+                     (om/build item-selector-component
+                               ;; Pass in :world so that button gets
+                               ;; enable/disabled on world changes
+                               {:history (:history app-state) :world (:world app-state)}
+                               {:init-state {:configuration-chan configuration-chan
+                                             :tool-kind :history
+                                             :tool-name :redo
+                                             :tool-text "Redo"
+                                             :is-disabled-fn (complement history/redoable)}}))))
         (dom/div
           nil
           (dom/div #js {:className "section-title"} "Algorithm")
@@ -214,4 +228,6 @@
           nil
           (dom/div #js {:className "section-title"} "Statistics")
           (dom/div #js {:className "section-wrapper"}
-            (om/build statistics-component app-state)))))))
+            (om/build statistics-component
+                      {:last-run-time (:last-run-time app-state)
+                       :brush (:brush app-state)})))))))
