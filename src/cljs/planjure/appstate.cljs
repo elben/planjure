@@ -14,7 +14,7 @@
            {
             :small  { :text "Small"  :size 20  :tile-size-px 20 }
             :medium { :text "Medium" :size 40  :tile-size-px 10 }
-            :large  { :text "Large"  :size 200 :tile-size-px 2 }
+            :large  { :text "Large"  :size 100 :tile-size-px 4 }
            }
 
          :brush :brush
