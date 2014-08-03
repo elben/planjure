@@ -1,5 +1,7 @@
 (ns planjure.appstate
-  (:require [planjure.plan :as plan]))
+  (:require [om.core :as om :include-macros true]
+            [planjure.plan :as plan]
+            [cljs.core.async :refer [put! chan]]))
 
 (def app-state
   (atom {:world (plan/random-world 20 20)
@@ -44,3 +46,15 @@
          :mouse-drawing false
          :mouse-pos [0 0]
         }))
+
+(def plan-chan (chan))
+
+(defn update-world-state!
+  "Update world state given app-state cursor or atom. Re-plan if app-state
+  requires it."
+  [app-state new-world]
+  (if (om/cursor? app-state)
+    (om/update! app-state :world new-world)
+    (swap! app-state assoc :world new-world))
+  (when (:replan @app-state) (put! plan-chan "plan!")))
+

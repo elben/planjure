@@ -5,19 +5,11 @@
             [cljs.core.async :refer [put! chan <!]]
             [planjure.utils :as utils]
             [planjure.plan :as plan]
+            [planjure.appstate :as appstate]
             [planjure.history :as history]))
-
-(def plan-chan (chan))
 
 (def algorithms {:dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (utils/time-f plan/dfs)}})
-
-(defn update-world-state!
-  "Given app-state cursor and the new world, update the world state. Re-plan if
-  app-state requires it."
-  [app-state new-world]
-  (om/update! app-state :world new-world)
-  (when (:replan @app-state) (put! plan-chan "plan!")))
 
 (defn checkbox-component [cursor owner]
   (reify
@@ -124,7 +116,7 @@
   (reify
     om/IInitState
     (init-state [_]
-      {:plan-chan plan-chan
+      {:plan-chan appstate/plan-chan
        :configuration-chan (chan)})
 
     om/IWillMount
@@ -132,9 +124,9 @@
       (let [configuration-chan (om/get-state owner :configuration-chan)]
         (go
           (while true
-            (let [[v ch] (alts! [plan-chan configuration-chan])]
+            (let [[v ch] (alts! [appstate/plan-chan configuration-chan])]
               (println v)
-              (when (= ch plan-chan)
+              (when (= ch appstate/plan-chan)
                 (let [algo-fn ((algorithms (:algo @app-state)) :fn)
                       result (algo-fn (:world @app-state) (:setup @app-state))]
                   ;; Need to @app-state above because cursors (in this case,
@@ -157,7 +149,7 @@
                       (om/update! app-state :world-size world-size)
                       (om/update! app-state [:setup :finish] [last-row-col last-row-col])
                       (om/update! app-state :path [])
-                      (update-world-state! app-state (plan/random-world world-num-tiles world-num-tiles))
+                      (appstate/update-world-state! app-state (plan/random-world world-num-tiles world-num-tiles))
                       (history/reset))
 
                     :history

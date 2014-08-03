@@ -120,12 +120,12 @@
   "Increase cost at x, y position in the world passed in via the app-state
   cursor."
   [app-state x y multiplier]
-  (let [brush-size (:brush-size @appstate/app-state)
-        matrix (get-in @appstate/app-state [:brush-size-options brush-size :matrix])
+  (let [brush-size (:brush-size @app-state)
+        matrix (get-in @app-state [:brush-size-options brush-size :matrix])
         new-world (utils/update-world (:world @app-state)
                                       matrix
                                       x y multiplier)]
-    (toolbar/update-world-state! app-state new-world)))
+    (appstate/update-world-state! app-state new-world)))
 
 (defn erase-at
   [app-state tile-pos]

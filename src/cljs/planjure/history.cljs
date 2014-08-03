@@ -21,7 +21,7 @@
           prev-world (last @from-stack)]
       (swap! from-stack pop)
       (swap! to-stack conj current-world)
-      (reset! appstate/app-state (assoc-in @appstate/app-state [:world] prev-world))
+      (appstate/update-world-state! appstate/app-state prev-world)
       prev-world)))
 
 (defn undo []
