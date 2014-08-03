@@ -5,6 +5,8 @@
   (atom {:world (plan/random-world 20 20)
          :setup {:start [0 0] :finish [19 19]}
          :path []
+         :draw-visited false
+         :visited []
          :algo :dijkstra
          :last-run-time 0
          :canvas { :width 400 :height 400 }
@@ -24,7 +26,7 @@
             :eraser { :text "Eraser" }
            }
 
-         :brush-size :size1
+         :brush-size :size3
          :brush-size-options
            {
             :size1 { :text "1" :matrix [[1]] }

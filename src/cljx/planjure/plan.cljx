@@ -64,10 +64,6 @@
     (doseq [row ascii]
       (println row))))
 
-(defn plan
-  "Plans a path in the world using specified algorithm."
-  [algorithm world setup])
-
 (defn cost
   "Cost of traversing from a neighboring node to specified node in world.  In
   theory, the edges hold the cost. But in our current world, the nodes hold the
@@ -187,7 +183,15 @@
 (defn dijkstra
   "Dijkstra's classic graph algorithm.
   
-  Returns optimal path from start to finish."
+  Returns a map containing:
+
+  {
+   :path    [...]
+   :visited [...]
+  }
+
+  Where :path is the optimal path from start to finish, and :visited are the
+  nodes visited by the search."
   [world {:keys [start finish] :as setup}]
   (loop [pq (priority-map start 0)
          g-costs {}
@@ -195,16 +199,17 @@
     (cond
       (empty? pq)
         ;; Never found finish. Plan as best as we can.
-        (find-path previous setup)
+        {:path (find-path previous setup)
+         :visited (map first previous)}
       (= (first (first pq)) finish)
         ;; We're done.
         ;;
         ;; If we popped finish, that means that finish was pushed as a neighbor
         ;; and thus we have 'previous' set up already.
-        (find-path previous setup)
+        {:path (find-path previous setup)
+         :visited (map first previous)}
       :else
         (let [node (first (first pq)) ;; Get highest priority node (throw away priority).
-              old-pq pq
               pq (pop pq)
               neighs (neighbors world node setup)
               improved-neighbor-costs (nodes-with-improved-costs world g-costs node neighs)
@@ -223,7 +228,15 @@
   Instead of terminating right away after finish is found, this DFS
   implementation exhausts the search space to find the global maxima.
 
-  Returns optimal path from start to finish."
+  Returns a map containing:
+
+  {
+   :path    [...]
+   :visited [...]
+  }
+
+  Where :path is the optimal path from start to finish, and :visited are the
+  nodes visited by the search."
   [world {:keys [start finish] :as setup}]
   (loop [stack [start] ;; init stack with start node
          g-costs {} ;; map of node to cost
@@ -231,7 +244,8 @@
     (cond
       (empty? stack)
         ;; We're done! get out of loop.
-        (find-path previous setup)
+        {:path (find-path previous setup)
+         :visited (map first previous)}
 
       (= (last stack) finish)
         ;; If we popped finish, don't push its neighbors into stack, because

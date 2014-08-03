@@ -115,11 +115,12 @@
               (when (= ch plan-chan)
                 (let [algo-fn ((algorithms (:algo @app-state)) :fn)
                       result (algo-fn (:world @app-state) (:setup @app-state))]
-                  ;; Need to @app-state here because cursors (in this case,
+                  ;; Need to @app-state above because cursors (in this case,
                   ;; app-state) are not guaranteed to be consistent outside of the
                   ;; React.js render/render-state cycles.
                   (om/update! app-state :last-run-time (result :time))
-                  (om/update! app-state :path (result :return))))
+                  (om/update! app-state :visited (:visited (result :return)))
+                  (om/update! app-state :path (:path (result :return)))))
               (when (= ch configuration-chan)
                 (case (:kind v)
                   :algorithm
@@ -223,7 +224,7 @@
               ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
               ;; world canvas component listens to this global channel to plan new paths.
               (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))))
-        
+
         (dom/div
           nil
           (dom/div #js {:className "section-title"} "Statistics")
