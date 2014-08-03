@@ -12,6 +12,13 @@
 (def algorithms {:dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (utils/time-f plan/dfs)}})
 
+(defn update-world-state!
+  "Given app-state cursor and the new world, update the world state. Re-plan if
+  app-state requires it."
+  [app-state new-world]
+  (om/update! app-state :world new-world)
+  (when (:replan @app-state) (put! plan-chan "plan!")))
+
 (defn checkbox-component [cursor owner]
   (reify
     om/IRenderState
@@ -148,9 +155,9 @@
                           world-num-tiles (get-in @app-state [:world-size-options world-size :size])
                           last-row-col (dec world-num-tiles)]
                       (om/update! app-state :world-size world-size)
-                      (om/update! app-state :world (plan/random-world world-num-tiles world-num-tiles))
                       (om/update! app-state [:setup :finish] [last-row-col last-row-col])
                       (om/update! app-state :path [])
+                      (update-world-state! app-state (plan/random-world world-num-tiles world-num-tiles))
                       (history/reset))
 
                     :history
@@ -249,9 +256,9 @@
               (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))
             (dom/div
               nil
-              ; (om/build checkbox-component {}
-              ;           {:init-state {:configuration-chan configuration-chan
-              ;                         :input-name :replan :label-text "RE-PLAN"}})
+              (om/build checkbox-component {}
+                        {:init-state {:configuration-chan configuration-chan
+                                      :input-name :replan :label-text "RE-PLAN"}})
               (om/build checkbox-component {}
                         {:init-state {:configuration-chan configuration-chan
                                       :input-name :draw-visited :label-text "VISITED"}}))))

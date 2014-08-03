@@ -5,6 +5,7 @@
             [goog.events :as events]
             [cljs.core.async :refer [put! chan <!]]
             [planjure.utils :as utils]
+            [planjure.components.toolbar :as toolbar]
             [planjure.appstate :as appstate]
             [planjure.history :as history]))
 
@@ -121,13 +122,10 @@
   [app-state x y multiplier]
   (let [brush-size (:brush-size @appstate/app-state)
         matrix (get-in @appstate/app-state [:brush-size-options brush-size :matrix])
-        new-world (utils/update-world (:world @appstate/app-state)
+        new-world (utils/update-world (:world @app-state)
                                       matrix
                                       x y multiplier)]
-    ;; TODO updating app-state right here takes a LONG time because it renders
-    ;; all components w/ a cursor to :world. We need to use cursors for other
-    ;; non-canvas components, instead of just passing in the whole state.
-    (om/update! app-state :world new-world)))
+    (toolbar/update-world-state! app-state new-world)))
 
 (defn erase-at
   [app-state tile-pos]
