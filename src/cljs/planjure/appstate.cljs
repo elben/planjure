@@ -4,8 +4,9 @@
 (def app-state
   (atom {:world (plan/random-world 20 20)
          :setup {:start [0 0] :finish [19 19]}
+         :replan false ;; Replan on world change?
          :path []
-         :draw-visited false
+         :draw-visited false ;; Mark visited nodes on canvas?
          :visited []
          :algo :dijkstra
          :last-run-time 0

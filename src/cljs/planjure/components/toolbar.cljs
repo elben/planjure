@@ -12,6 +12,21 @@
 (def algorithms {:dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (utils/time-f plan/dfs)}})
 
+(defn checkbox-component [cursor owner]
+  (reify
+    om/IRenderState
+    (render-state [_ {:keys [configuration-chan label-text input-name]}]
+      (dom/div
+        #js {:className "checkbox-row"}
+        (dom/label
+          nil
+          (dom/input #js {:type "checkbox"
+                          :value ""
+                          :onChange #(put! configuration-chan {:kind :checkbox
+                                                               :input-name input-name
+                                                               :value (.. % -target -checked)})})
+          label-text)))))
+
 (defn item-selector-component [cursor owner]
   (reify
     om/IInitState
@@ -146,7 +161,15 @@
                       (history/redo))
 
                     ;; Default case
-                    (om/update! app-state (:tool-kind v) (:value v))))))))))
+                    (om/update! app-state (:tool-kind v) (:value v)))
+
+                  :checkbox
+                  (case (:input-name v)
+                    :replan
+                    (om/update! app-state :replan (:value v))
+
+                    :draw-visited
+                    (om/update! app-state :draw-visited (:value v))))))))))
 
     om/IDidMount
     (did-mount [this] nil)
@@ -223,8 +246,15 @@
               ;; https://github.com/swannodette/om/wiki/Basic-Tutorial#intercomponent-communication
               ;; This grabs plan-chan channel, and puts "plan!" in the channel. The
               ;; world canvas component listens to this global channel to plan new paths.
-              (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))))
-
+              (dom/button #js {:onClick #(put! (om/get-state owner :plan-chan) "plan!")} "Plan Path"))
+            (dom/div
+              nil
+              ; (om/build checkbox-component {}
+              ;           {:init-state {:configuration-chan configuration-chan
+              ;                         :input-name :replan :label-text "RE-PLAN"}})
+              (om/build checkbox-component {}
+                        {:init-state {:configuration-chan configuration-chan
+                                      :input-name :draw-visited :label-text "VISITED"}}))))
         (dom/div
           nil
           (dom/div #js {:className "section-title"} "Statistics")
