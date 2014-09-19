@@ -8,7 +8,8 @@
             [planjure.appstate :as appstate]
             [planjure.history :as history]))
 
-(def algorithms {:dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
+(def algorithms {:astar    {:name "A*" :fn (utils/time-f plan/astar)}
+                 :dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
                  :dfs      {:name "Depth-first" :fn (utils/time-f plan/dfs)}})
 
 (defn checkbox-component [cursor owner]
@@ -110,6 +111,7 @@
         (dom/div
           #js {:className :running-time}
           (dom/div nil (str (/ (cursor :last-run-time) 1000) " seconds"))
+          (dom/div nil (str (cursor :last-cost) " Cost"))
           (dom/div nil (name (cursor :brush))))))))
 
 (defn toolbar-component [app-state owner]
@@ -134,6 +136,7 @@
                   ;; React.js render/render-state cycles.
                   (om/update! app-state :last-run-time (result :time))
                   (om/update! app-state :visited (:visited (result :return)))
+                  (om/update! app-state :last-cost (:cost (result :return)))
                   (om/update! app-state :path (:path (result :return)))))
               (when (= ch configuration-chan)
                 (case (:kind v)
@@ -259,5 +262,6 @@
           (dom/div #js {:className "section-title"} "Statistics")
           (dom/div #js {:className "section-wrapper"}
             (om/build statistics-component
-                      {:last-run-time (:last-run-time app-state)
+                      {:last-cost (:last-cost app-state)
+                       :last-run-time (:last-run-time app-state)
                        :brush (:brush app-state)})))))))

@@ -65,7 +65,7 @@
       (println row))))
 
 (defn cost
-  "Cost of traversing from a neighboring node to specified node in world.  In
+  "Cost of traversing from a neighboring node to specified node in world. In
   theory, the edges hold the cost. But in our current world, the nodes hold the
   cost. Means that the cost of moving from any of its neighboring node to
   specified node is the value of the node cell."
@@ -73,32 +73,52 @@
   (let [[r c] node]
     ((world r) c)))
 
+(defn cost-heuristic
+  "Similar to `cost`, but use Manhattan distance heuristics from node to finish
+  node."
+  [world node finish]
+  (let [[r c] node
+        [r2 c2] finish
+        g-cost (cost world node)
+        ; h-cost (Math/sqrt (+ (Math/pow (- r r2) 2) (Math/pow (- c c2) 2))) 
+        h-cost (+ (Math/abs (- r r2)) (Math/abs (- c c2)))
+        ]
+    (+ g-cost h-cost)))
+
+
 (defn find-path
-  "Returns path from start to finish. Previous is a backtrack mapping of nodes,
+  "Find path from start to finish. Previous is a backtrack mapping of nodes,
   and setup is a map containing :start and :finish nodes. Returns partial path
-  if no is available (e.g. no path or recursive path)."
-  [previous {:keys [start finish] :as setup}]
+  if no is available (e.g. no path or recursive path).
+  
+  Returns map:
+
+  {:path [...]
+   :cost Int}
+  "
+  [previous world {:keys [start finish] :as setup}]
   (if-not (contains? previous finish)
     []
     (loop [path []
            seen #{}
-           node finish]
+           node finish
+           cost-sum 0]
       (cond
         ;; This check needs to go first, before the contains? check, since
         ;; start is not in previous mapping.
         ;;
         ;; Done, found path from finish to start. Reverse so the path presented
         ;; is start to finish.
-        (= node start) (reverse (conj path start))
+        (= node start) {:path (reverse (conj path start)) :cost cost-sum}
 
         ;; Cannot complete path. Return best path, ending in finish.
-        (not (contains? previous node)) (reverse path)
+        (not (contains? previous node)) {:path (reverse path) :cost cost-sum}
 
         ;; Seen before. Recursive. Cannot complete path.
-        (contains? seen node) (reverse (conj path node))
+        (contains? seen node) {:path (reverse (conj path node)) :cost cost-sum}
 
         ;; Can backtrack, so recur.
-        :else (recur (conj path node) (conj seen node) (previous node))))))
+        :else (recur (conj path node) (conj seen node) (previous node) (+ cost-sum (cost world node)))))))
 
 
 ; dfs algorithm
@@ -160,29 +180,101 @@
 (defn nodes-with-improved-costs
   "Find nodes that would improve its cost if it were to arrive from node instead
   of the cost specified in g-cost. Exclude nodes that would increase its cost.
+
+  If a cost function is not provided, default to the default cost function,
+  `cost`, defined in this namespace. If provided, use that.
+
   Returns map of nodes to cost."
-  [world g-costs base-node nodes]
-  (let [rows (count world)
-        cols (count (first world))
-        collect-improved-nodes (fn
-                                 [improved-nodes node]
-                                 (let [new-cost (+ (lookup-g-cost g-costs base-node) (cost world node))]
-                                   (if (or
-                                         (not (contains? g-costs node))
-                                         (< new-cost (lookup-g-cost g-costs node)))
+  ([world g-costs base-node nodes]
+   (nodes-with-improved-costs world g-costs base-node nodes cost))
+  ([world g-costs base-node nodes cost-fn]
+   (let [rows (count world)
+         cols (count (first world))
+         collect-improved-nodes (fn
+                                  [improved-nodes node]
+                                  (let [new-cost (+ (lookup-g-cost g-costs base-node) (cost-fn world node))]
+                                    (if (or
+                                          (not (contains? g-costs node))
+                                          (< new-cost (lookup-g-cost g-costs node)))
 
-                                     ;; Use this node if it wasn't in the g-costs
-                                     ;; before (never been traversed to), or if it's
-                                     ;; cheaper coming from this base-node than before.
-                                     (assoc improved-nodes node new-cost)
+                                      ;; Use this node if it wasn't in the g-costs
+                                      ;; before (never been traversed to), or if it's
+                                      ;; cheaper coming from this base-node than before.
+                                      (assoc improved-nodes node new-cost)
 
-                                     ;; If more expensive, don't use this node
-                                     improved-nodes)))]
-    (reduce collect-improved-nodes {} nodes)))
+                                      ;; If more expensive, don't use this node
+                                      improved-nodes)))]
+     (reduce collect-improved-nodes {} nodes))))
+
+(defn generic-astar
+  "A* algorithm. Takes a world, setup, and cost function.
+
+  Returns a map containing:
+
+  {
+  :path    [...]
+  :visited [...]
+  }
+
+  Where :path is the optimal path from start to finish, and :visited are the
+  nodes visited by the search."
+  [world {:keys [start finish] :as setup} cost-heuristic]
+  (loop [pq (priority-map start 0)
+         g-costs {}
+         previous {}]
+    (cond
+      (empty? pq)
+      ;; Never found finish. Plan as best as we can.
+      (assoc (find-path previous world setup) :visited (map first previous))
+
+      (= (first (first pq)) finish)
+      ;; We're done.
+      ;;
+      ;; If we popped finish, that means that finish was pushed as a neighbor
+      ;; and thus we have 'previous' set up already.
+      (assoc (find-path previous world setup) :visited (map first previous))
+
+      :else
+      (let [node (first (first pq)) ;; Get highest priority node (throw away priority).
+            pq (pop pq)
+            neighs (neighbors world node setup)
+            
+            ;; The *real* costs for these neighbors
+            improved-neighbor-costs (nodes-with-improved-costs world g-costs node neighs cost)
+            improved-neighbors (keys improved-neighbor-costs)
+
+            ;; Heuristic costs for neighbors.
+            ;; TODO: optimize this so that we calculate real cost (above) AND
+            ;; heuristic cost at the same time, in O(n) instead of O(2n).
+            improved-neighbor-heuristics (nodes-with-improved-costs world g-costs node neighs cost-heuristic)
+
+            updated-g-costs (merge g-costs improved-neighbor-costs)
+            updated-previous (merge previous
+                                    ;; Create map of neighbors to node
+                                    ;; %1 is map, %2 neighbor.
+                                    (reduce #(assoc %1 %2 node) {} improved-neighbors))]
+        ;; Push new neighbors into priority queue
+        (recur (into pq (vec improved-neighbor-heuristics)) updated-g-costs updated-previous)))))
+
+(defn astar
+  "A* algorithm.
+
+  Returns a map containing:
+
+  {
+  :path    [...]
+  :visited [...]
+  }
+
+  Where :path is the optimal path from start to finish, and :visited are the
+  nodes visited by the search."
+  [world {:keys [start finish] :as setup}]
+  (let [cost-fn (fn [world node] (cost-heuristic world node finish))]
+    (generic-astar world setup cost-fn)))
 
 (defn dijkstra
   "Dijkstra's classic graph algorithm.
-  
+
   Returns a map containing:
 
   {
@@ -192,35 +284,8 @@
 
   Where :path is the optimal path from start to finish, and :visited are the
   nodes visited by the search."
-  [world {:keys [start finish] :as setup}]
-  (loop [pq (priority-map start 0)
-         g-costs {}
-         previous {}]
-    (cond
-      (empty? pq)
-        ;; Never found finish. Plan as best as we can.
-        {:path (find-path previous setup)
-         :visited (map first previous)}
-      (= (first (first pq)) finish)
-        ;; We're done.
-        ;;
-        ;; If we popped finish, that means that finish was pushed as a neighbor
-        ;; and thus we have 'previous' set up already.
-        {:path (find-path previous setup)
-         :visited (map first previous)}
-      :else
-        (let [node (first (first pq)) ;; Get highest priority node (throw away priority).
-              pq (pop pq)
-              neighs (neighbors world node setup)
-              improved-neighbor-costs (nodes-with-improved-costs world g-costs node neighs)
-              improved-neighbors (keys improved-neighbor-costs)
-              updated-g-costs (merge g-costs improved-neighbor-costs)
-              updated-previous (merge previous
-                                      ;; Create map of neighbors to node
-                                      ;; %1 is map, %2 neighbor.
-                                      (reduce #(assoc %1 %2 node) {} improved-neighbors))]
-          ;; Push new neighbors into priority queue
-          (recur (into pq (vec improved-neighbor-costs)) updated-g-costs updated-previous)))))
+  [world setup]
+  (generic-astar world setup cost))
 
 (defn dfs
   "Depth-first search.
@@ -239,13 +304,12 @@
   nodes visited by the search."
   [world {:keys [start finish] :as setup}]
   (loop [stack [start] ;; init stack with start node
-         g-costs {} ;; map of node to cost
-         previous {}] ;; map of node to node
+         g-costs {}    ;; map of node to cost
+         previous {}]  ;; map of node to node
     (cond
       (empty? stack)
-        ;; We're done! get out of loop.
-        {:path (find-path previous setup)
-         :visited (map first previous)}
+      ;; We're done! get out of loop.
+      (assoc (find-path previous world setup) :visited (map first previous))
 
       (= (last stack) finish)
         ;; If we popped finish, don't push its neighbors into stack, because

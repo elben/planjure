@@ -12,6 +12,7 @@
          :visited []
          :algo :dijkstra
          :last-run-time 0
+         :last-cost 0 ;; Cost of last plan
          :canvas { :width 400 :height 400 }
 
          :world-size :small
