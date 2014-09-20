@@ -115,6 +115,18 @@
           (dom/div nil (str (cursor :last-cost) " Cost"))
           (dom/div nil (name (cursor :brush))))))))
 
+;; A component that will force a replan whenever its cursor changes. Not sure if
+;; this is the best way to do this.
+(defn replan-component [cursor owner]
+  (reify
+    om/IWillUpdate
+    (will-update [_ next-props {:keys [plan-chan] :as next-state}]
+      (when (:replan cursor) (put! plan-chan "plan!")))
+
+    om/IRender
+    (render [_]
+      (dom/span #js {} nil))))
+
 (defn toolbar-component [app-state owner]
   (reify
     om/IInitState
@@ -263,4 +275,8 @@
             (om/build statistics-component
                       {:last-cost (:last-cost app-state)
                        :last-run-time (:last-run-time app-state)
-                       :brush (:brush app-state)})))))))
+                       :brush (:brush app-state)})))
+        (om/build replan-component
+                  (select-keys app-state [:world :setup :replan])
+                  {:init-state {:plan-chan (om/get-state owner :plan-chan)}})))))
+
