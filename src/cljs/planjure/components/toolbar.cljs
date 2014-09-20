@@ -8,9 +8,10 @@
             [planjure.appstate :as appstate]
             [planjure.history :as history]))
 
-(def algorithms {:astar    {:name "A*" :fn (utils/time-f plan/astar)}
-                 :dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
-                 :dfs      {:name "Depth-first" :fn (utils/time-f plan/dfs)}})
+(def algorithms {:dijkstra {:name "Dijkstra" :fn (utils/time-f plan/dijkstra)}
+                 :astar    {:name "A*" :fn (utils/time-f plan/astar)}
+                 :dfs      {:name "Depth-first" :fn (utils/time-f plan/dfs)}
+                 })
 
 (defn checkbox-component [cursor owner]
   (reify
@@ -187,7 +188,6 @@
             (om/build size-component
               {:world-size (:world-size app-state) :world-size-options (:world-size-options app-state)}
               {:init-state {:configuration-chan configuration-chan}})))
-
         (dom/div
           nil
           (dom/div #js {:className "section-title"} "Editor")
@@ -198,7 +198,6 @@
                        :brush-size (:brush-size app-state)
                        :brush-size-options (:brush-size-options app-state)}
                       {:init-state {:configuration-chan configuration-chan}})))
-
         (dom/div
           nil
           (dom/div #js {:className "section-title"} "History")

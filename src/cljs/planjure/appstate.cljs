@@ -45,6 +45,7 @@
            }
 
          :mouse-drawing false
+         :mouse-moving-setup { :start false :finish false }
          :mouse-pos [0 0]
         }))
 

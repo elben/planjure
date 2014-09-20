@@ -53,9 +53,14 @@
     (set! (.-strokeStyle context) color)
     (.stroke context)))
 
-(defn draw-start-finish-marker [context row col size]
+(defn draw-start-node [context row col size]
+  (let [color "#000000"]
+    (draw-rect-tile context row col color size)))
+
+(defn draw-finish-node [context row col size]
   (let [color "#d02426"]
     (draw-rect-tile context row col color size)))
+
 
 (defn draw-path [context path size]
   (doseq [node path]
@@ -96,8 +101,8 @@
     ; draw start/finish
     (let [[start-row start-col] (get-in app-state [:setup :start])
           [finish-row finish-col] (get-in app-state [:setup :finish])]
-      (draw-start-finish-marker context start-row start-col size)
-      (draw-start-finish-marker context finish-row finish-col size))
+      (draw-start-node context start-row start-col size)
+      (draw-finish-node context finish-row finish-col size))
 
     ; draw path (if exists)
     (draw-path context (:path app-state) size)
@@ -110,6 +115,7 @@
   {:x (.-offsetX e) :y (.-offsetY e)})
 
 (defn tile-pos-at
+  "Returns map {:x x, :y y}."
   [canvas e]
   ;; TODO need to close tile-size elsewhere for perf?
   (let [{:keys [x y]} (mouse-pos-at canvas e)
@@ -137,6 +143,34 @@
   (let [{:keys [x y]} tile-pos]
     (update-world! app-state x y 1)))
 
+(defn mouse-moving?
+  "Returns true if which (:start or :finish) node is being moved. Other return
+  false."
+  [which]
+  (get-in @appstate/app-state [:mouse-moving-setup which]))
+
+(defn place-node
+  "Update which (:start or :finish) node to given node. Stop mouse moving."
+  [app-state which node]
+  (om/update! app-state [:setup which] node)
+  (om/update! app-state [:mouse-moving-setup which] false))
+
+(defn place-or-pick-up-node
+  "Update which (:start or :finish) node to given node if mouse is moving.
+  Otherwise, pick up node by starting mouse moving mode."
+  [app-state which node]
+  (if (get-in @app-state [:mouse-moving-setup which])
+    (place-node app-state which node)
+    (om/update! app-state [:mouse-moving-setup which] true)))
+
+(defn move-node-from-canvas
+  "Given our canvas and mouseevent, move our `which` node (either :start or
+  :finish) to the position of the mouse event."
+  [app-state canvas mouseevent which]
+  (let [tile-pos (tile-pos-at canvas (:event mouseevent))
+        node-pos [(:y tile-pos) (:x tile-pos)]]
+    (om/update! app-state [:setup which] node-pos)))
+
 (defn world-canvas-component [app-state owner]
   (reify
     ; Lifecycles:
@@ -151,6 +185,7 @@
       (refresh-world app-state owner "world-canvas-ref")
       (let [world-canvas (om/get-node owner "world-canvas-ref")]
         ; (.addEventListener world-canvas "mousedown" #(println "down!") false)))
+        (events/listen world-canvas "click" #(put! mouse-chan {:event % :mouseevent :click})) 
         (events/listen world-canvas "mousedown" #(put! mouse-chan {:event % :mouseevent :mousedown}))
         (events/listen world-canvas "mouseup" #(put! mouse-chan {:event % :mouseevent :mouseup}))
         (events/listen world-canvas "mousemove" #(put! mouse-chan {:event % :mouseevent :mousemove})))
@@ -160,9 +195,32 @@
           (while true
             (let [mouseevent (<! mouse-chan)]
               (case (:mouseevent mouseevent)
+                :click
+                (let [tile-pos (tile-pos-at canvas (:event mouseevent))
+                      node-pos [(:y tile-pos) (:x tile-pos)]]
+                  ;; TODO so many similar looking checks for placing and picking
+                  ;; up nodes. Simplify!!
+                  (condp = node-pos
+                    ;; Clicked on the start node
+                    (get-in @app-state [:setup :start])
+                    (place-or-pick-up-node app-state :start node-pos)
+
+                    ;; Clicked on the finish node
+                    (get-in @app-state [:setup :finish])
+                    (place-or-pick-up-node app-state :finish node-pos)
+
+                    ;; Else, we clicked in a node that isn't the start/finish.
+                    ;; See if we're trying to put one of our start/finish nodes here.
+                    (cond
+                      (mouse-moving? :start)
+                      (place-node app-state :start node-pos)
+
+                      (mouse-moving? :finish)
+                      (place-node app-state :finish node-pos))))
+
                 ;; On mousedown, user starts drawing phase.
                 :mousedown
-                (let [world (:world @appstate/app-state)]
+                (let [world (:world @app-state)]
                   (om/update! app-state :mouse-drawing true)
                   ;; Commit the previous world into history
                   (history/push-world world))
@@ -170,12 +228,20 @@
                 ;; Consider a mouseup an atomic commit of the user
                 ;; brush stroke.
                 :mouseup
-                (let [world (:world @appstate/app-state)]
+                (let [world (:world @app-state)]
                   (om/update! app-state :mouse-drawing false))
 
                 ;; Actually draw when user moves mouse.
                 :mousemove
-                (when (:mouse-drawing @app-state)
+                (cond
+                  ;; TODO simplify
+                  (mouse-moving? :start)
+                  (move-node-from-canvas app-state canvas mouseevent :start)
+
+                  (mouse-moving? :finish)
+                  (move-node-from-canvas app-state canvas mouseevent :finish)
+
+                  (:mouse-drawing @app-state)
                   (let [tile-pos (tile-pos-at canvas (:event mouseevent))]
                     (case (:brush @app-state)
                       :eraser (erase-at app-state tile-pos)
@@ -197,5 +263,5 @@
 
     om/IRender
     (render [this]
-      (dom/canvas #js {:id "world-canvas" :width (get-in @appstate/app-state [:canvas :width]) :height (get-in @appstate/app-state [:canvas :height]) :className "world-canvas" :ref "world-canvas-ref"}))))
+      (dom/canvas #js {:id "world-canvas" :width (get-in app-state [:canvas :width]) :height (get-in app-state [:canvas :height]) :className "world-canvas" :ref "world-canvas-ref"}))))
 
