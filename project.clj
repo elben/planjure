@@ -44,6 +44,13 @@
                :optimizations :none
                :source-map true}}
 
+            {:id "advanced"
+             :source-paths ["src/cljs" "target/generated-src"]
+             :compiler {
+               :output-to "out-advanced/planjure.js"
+               :output-dir "out-advanced"
+               :optimizations :simple}}
+
             ;; cljs tests build
             {:id "planjure-test"
              :source-paths ["src/cljs" "target/generated-src" "test"]

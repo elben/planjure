@@ -26,3 +26,10 @@ lein test
 # cljs tests (not working yet)
 lein do cljsbuild once planjure-test, cljsbuild test
 ```
+
+# Deploying
+
+```bash
+lein cljx
+lein cljsbuild once advanced
+```
