@@ -98,7 +98,7 @@
   "
   [previous world {:keys [start finish] :as setup}]
   (if-not (contains? previous finish)
-    []
+    {:path [] :cost 0}
     (loop [path []
            seen #{}
            node finish
