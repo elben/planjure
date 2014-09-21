@@ -1,11 +1,5 @@
 # Planjure
 
-TODO
-
-- React needs externs? :advanced compilation is blowing up React ns e.g.
-  React.A.
-  - Figure how to to get React loaded into Om?
-
 [![Build Status](https://travis-ci.org/elben/planjure.svg?branch=master)](https://travis-ci.org/elben/planjure)
 
 Path-planning algorithms and demo in ClojureScript, using Om and core.async.
