@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/clojurescript "0.0-2280"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
-                 [om "0.7.0"]
+                 [om "0.7.3"]
                  [org.clojure/data.priority-map "0.0.5"]
                  [tailrecursion/cljs-priority-map "1.1.0"]]
 
@@ -35,8 +35,7 @@
   :cljsbuild {
    :test-commands {"unit-tests" ["phantomjs" :runner "target/cljs/testable.cljs"]}
    :builds [
-            ;; cljs build for distribution
-            {:id "planjure"
+            {:id "dev"
              :source-paths ["src/cljs" "target/generated-src"]
              :compiler {
                :output-to "planjure.js"
@@ -44,15 +43,17 @@
                :optimizations :none
                :source-map true}}
 
-            {:id "advanced"
+            {:id "release"
              :source-paths ["src/cljs" "target/generated-src"]
              :compiler {
-               :output-to "out-advanced/planjure.js"
-               :output-dir "out-advanced"
+               :output-to "planjure.min.js"
+               :preamble ["react/react.min.js"]
+               :externs ["react/externs/react.js"]
+               :pretty-print false
                :optimizations :simple}}
 
             ;; cljs tests build
-            {:id "planjure-test"
+            {:id "test"
              :source-paths ["src/cljs" "target/generated-src" "test"]
              :compiler {
                :output-to "target/cljs/testable.cljs"
