@@ -8,7 +8,7 @@ Or, a self-study in Clojure, ClojureScript, Om and core.async.
 
 Go here for a live version (possibly out-of-date): [http://elbenshira.com/projects/planjure](http://elbenshira.com/projects/planjure).
 
-![Planjure screenshot](https://raw.github.com/eshira/clojure-play/master/resources/screenshot.png "Planjure Screenshot")
+![Planjure screenshot](https://raw.githubusercontent.com/elben/planjure/master/resources/screenshot.png "Planjure Screenshot")
 
 # Development
 
