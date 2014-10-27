@@ -80,8 +80,10 @@
   (let [[r c] node
         [r2 c2] finish
         g-cost (cost world node)
-        ; h-cost (Math/sqrt (+ (Math/pow (- r r2) 2) (Math/pow (- c c2) 2))) 
-        h-cost (+ (Math/abs (- r r2)) (Math/abs (- c c2)))
+        ;; Add tie-breaker nudge into h-cost. Note that this breaks
+        ;; admissability, so path may not be optimal.
+        ;; http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#breaking-ties
+        h-cost (* (+ (Math/abs (- r r2)) (Math/abs (- c c2))) 1.005)
         ]
     (+ g-cost h-cost)))
 
